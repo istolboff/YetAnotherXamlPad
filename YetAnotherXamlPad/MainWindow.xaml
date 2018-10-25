@@ -3,17 +3,21 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
         xmlns:local="clr-namespace:YetAnotherXamlPad"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-      <Grid.RowDefinitions>
-        <RowDefinition Height="*" />
-        <RowDefinition Height="5" />
-        <RowDefinition Height="*" />
-      </Grid.RowDefinitions>
-      <TextBlock FontSize="55" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap">Top</TextBlock>
-      <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" />
-      <TextBlock Grid.Row="2" FontSize="55" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap">Bottom</TextBlock>
-    </Grid>
+        mc:Ignorable="d">
+  <Grid DataContext="{x:Static local:MainWindowViewModel.Instance}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="5" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <TextBlock FontSize="55" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap">Top</TextBlock>
+    <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" />
+    <avalonedit:TextEditor
+      Grid.Row="2"
+      SyntaxHighlighting="XML"
+      FontSize="16"
+      Document="{Binding XamlCodeDocument, UpdateSourceTrigger=PropertyChanged}"/>
+  </Grid>
 </Window>
