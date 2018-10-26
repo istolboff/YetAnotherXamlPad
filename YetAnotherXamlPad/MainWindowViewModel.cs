@@ -1,5 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
+using System.IO;
+using System.Windows;
+using System.Windows.Markup;
+using System.Xml;
 using ICSharpCode.AvalonEdit.Document;
 
 namespace YetAnotherXamlPad
@@ -43,6 +47,21 @@ namespace YetAnotherXamlPad
             }
         }
 
+        public FrameworkElement ParsedXaml
+        {
+            get => _parsedXaml;
+            set
+            {
+                if (ReferenceEquals(_parsedXaml, value))
+                {
+                    return;
+                }
+
+                _parsedXaml = value;
+                PropertyChanged(this, new PropertyChangedEventArgs(nameof(ParsedXaml)));
+            }
+        }
+
         public static readonly MainWindowViewModel Instance = new MainWindowViewModel();
 
         public event PropertyChangedEventHandler PropertyChanged = Do.Nothing;
@@ -54,9 +73,23 @@ namespace YetAnotherXamlPad
 
         private void TryRenderXaml(string xamlCode)
         {
-            System.Diagnostics.Trace.WriteLine(xamlCode);
+            {
+                try
+                {
+                    using (var stringReader = new StringReader(xamlCode))
+                    using (var xmlreader = new XmlTextReader(stringReader))
+                    {
+                        ParsedXaml = XamlReader.Load(xmlreader) as FrameworkElement;
+                    }
+                }
+                catch (Exception e)
+                {
+                    System.Diagnostics.Trace.WriteLine(e);
+                }
+            }
         }
 
         private TextDocument _xamlCodeDocument;
+        private FrameworkElement _parsedXaml;
     }
 }
