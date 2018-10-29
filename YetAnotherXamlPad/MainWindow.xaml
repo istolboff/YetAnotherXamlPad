@@ -5,8 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
         xmlns:local="clr-namespace:YetAnotherXamlPad"
-        mc:Ignorable="d">
-  <Grid DataContext="{x:Static local:MainWindowViewModel.Instance}">
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=local:MainWindowViewModel, IsDesignTimeCreatable=False}"
+        Title="{Binding Title}">
+  <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="*" />
       <RowDefinition Height="5" />
@@ -32,7 +34,7 @@
           SyntaxHighlighting="C#"
           FontSize="16"
           IsEnabled="{Binding UseViewModels}"
-          Document="{Binding ViewModelCode, UpdateSourceTrigger=PropertyChanged}"/>
+          Document="{Binding ViewModelCodeDocument, UpdateSourceTrigger=PropertyChanged}"/>
       </TabItem>
       <TabItem Header="Errors" Content="{Binding Errors}"/>
     </TabControl>

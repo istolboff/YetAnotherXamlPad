@@ -8,25 +8,14 @@ using ICSharpCode.AvalonEdit.Document;
 
 namespace YetAnotherXamlPad
 {
-    public sealed class MainWindowViewModel : INotifyPropertyChanged
+    internal sealed class MainWindowViewModel : INotifyPropertyChanged
     {
-        public MainWindowViewModel()
+        public MainWindowViewModel(bool useViewModels)
         {
-            XamlCodeDocument = new TextDocument(
-@"<Page
-    xmlns = ""http://schemas.microsoft.com/winfx/2006/xaml/presentation""
-    xmlns:sys = ""clr-namespace:System;assembly=mscorlib""
-    xmlns:x = ""http://schemas.microsoft.com/winfx/2006/xaml"">
-</Page>");
-
-            ViewModelCode = new TextDocument(
-@"namespace ViewModels
-{
-    public class ViewModel
-    {
-    }
-}");
+            _useViewModels = useViewModels;
         }
+
+        public string Title => AppDomain.CurrentDomain.FriendlyName;
 
         public TextDocument XamlCodeDocument
         {
@@ -51,7 +40,11 @@ namespace YetAnotherXamlPad
                 }
 
                 PropertyChanged(this, new PropertyChangedEventArgs(nameof(XamlCodeDocument)));
-                TryRenderXaml(_xamlCodeDocument.Text);
+
+                if (_xamlCodeDocument != null)
+                {
+                    TryRenderXaml(_xamlCodeDocument.Text);
+                }
             }
         }
 
@@ -82,10 +75,11 @@ namespace YetAnotherXamlPad
 
                 _useViewModels = value;
                 PropertyChanged(this, new PropertyChangedEventArgs(nameof(UseViewModels)));
+                GuiRunner.RequestGuiSessionRestart(useViewModels: value, xamlCode: _xamlCodeDocument.Text, viewModelCode: _viewModelCode.Text);
             }
         }
 
-        public TextDocument ViewModelCode
+        public TextDocument ViewModelCodeDocument
         {
             get => _viewModelCode;
             set
@@ -107,8 +101,9 @@ namespace YetAnotherXamlPad
                     _viewModelCode.TextChanged += OnViewModelCodeChanged;
                 }
 
-                PropertyChanged(this, new PropertyChangedEventArgs(nameof(ViewModelCode)));
-                if (UseViewModels)
+                PropertyChanged(this, new PropertyChangedEventArgs(nameof(ViewModelCodeDocument)));
+
+                if (UseViewModels && _viewModelCode != null)
                 {
                     TryBuildCSharpCode(_viewModelCode.Text);
                 }
@@ -129,8 +124,6 @@ namespace YetAnotherXamlPad
                 PropertyChanged(this, new PropertyChangedEventArgs(nameof(Errors)));
             }
         }
-
-        public static readonly MainWindowViewModel Instance = new MainWindowViewModel();
 
         public event PropertyChangedEventHandler PropertyChanged = Do.Nothing;
 
