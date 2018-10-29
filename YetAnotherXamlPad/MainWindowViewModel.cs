@@ -18,6 +18,14 @@ namespace YetAnotherXamlPad
     xmlns:sys = ""clr-namespace:System;assembly=mscorlib""
     xmlns:x = ""http://schemas.microsoft.com/winfx/2006/xaml"">
 </Page>");
+
+            ViewModelCode = new TextDocument(
+@"namespace ViewModels
+{
+    public class ViewModel
+    {
+    }
+}");
         }
 
         public TextDocument XamlCodeDocument
@@ -62,6 +70,66 @@ namespace YetAnotherXamlPad
             }
         }
 
+        public bool UseViewModels
+        {
+            get => _useViewModels;
+            set
+            {
+                if (_useViewModels == value)
+                {
+                    return;
+                }
+
+                _useViewModels = value;
+                PropertyChanged(this, new PropertyChangedEventArgs(nameof(UseViewModels)));
+            }
+        }
+
+        public TextDocument ViewModelCode
+        {
+            get => _viewModelCode;
+            set
+            {
+                if (ReferenceEquals(_viewModelCode, value))
+                {
+                    return;
+                }
+
+                if (_viewModelCode != null)
+                {
+                    _viewModelCode.TextChanged -= OnViewModelCodeChanged;
+                }
+
+                _viewModelCode = value;
+
+                if (_viewModelCode != null)
+                {
+                    _viewModelCode.TextChanged += OnViewModelCodeChanged;
+                }
+
+                PropertyChanged(this, new PropertyChangedEventArgs(nameof(ViewModelCode)));
+                if (UseViewModels)
+                {
+                    TryBuildCSharpCode(_viewModelCode.Text);
+                }
+            }
+        }
+
+        public string Errors
+        {
+            get => _errors;
+            set
+            {
+                if (_errors == value)
+                {
+                    return;
+                }
+
+                _errors = value;
+                PropertyChanged(this, new PropertyChangedEventArgs(nameof(Errors)));
+            }
+        }
+
         public static readonly MainWindowViewModel Instance = new MainWindowViewModel();
 
         public event PropertyChangedEventHandler PropertyChanged = Do.Nothing;
@@ -69,6 +137,11 @@ namespace YetAnotherXamlPad
         private void OnXamlCodeChanged(object sender, EventArgs e)
         {
             TryRenderXaml(((TextDocument)sender).Text);
+        }
+
+        private void OnViewModelCodeChanged(object sender, EventArgs e)
+        {
+            TryBuildCSharpCode(((TextDocument)sender).Text);
         }
 
         private void TryRenderXaml(string xamlCode)
@@ -81,15 +154,24 @@ namespace YetAnotherXamlPad
                     {
                         ParsedXaml = XamlReader.Load(xmlreader) as FrameworkElement;
                     }
+
+                    Errors = null;
                 }
                 catch (Exception e)
                 {
-                    System.Diagnostics.Trace.WriteLine(e);
+                    Errors = e.ToString();
                 }
             }
         }
 
+        private void TryBuildCSharpCode(string csharpCode)
+        {
+        }
+
         private TextDocument _xamlCodeDocument;
         private FrameworkElement _parsedXaml;
+        private string _errors;
+        private TextDocument _viewModelCode;
+        private bool _useViewModels;
     }
 }
