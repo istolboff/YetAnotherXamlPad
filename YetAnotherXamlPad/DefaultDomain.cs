@@ -14,7 +14,7 @@ namespace YetAnotherXamlPad
 
         public Application Application { get; }
 
-        public void RunApplication()
+        public void RunApplicationIfNotAlreadyRunning()
         {
             if (!_isRunning)
             {

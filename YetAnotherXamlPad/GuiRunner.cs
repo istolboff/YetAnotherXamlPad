@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Reflection;
 using System.Windows;
 using ICSharpCode.AvalonEdit.Document;
 
@@ -7,13 +8,15 @@ namespace YetAnotherXamlPad
 {
     internal static class GuiRunner 
     {
+        public static MainWindowViewModel MainWindowViewModel => CreateMainWindowViewModel(GetState());
+
         public static void Setup(AppDomain defaultAppDomain)
         {
             Debug.Assert(
                 defaultAppDomain.IsDefaultAppDomain(),
                 "Program logic error: Main() is not called from default AppDomain.");
 
-            App defaultDomainApplication = new App();
+            var defaultDomainApplication = CreateApplication();
             var defaultDomain = new DefaultDomain(defaultDomainApplication);
             var guiRunnerState = new GuiRunnerState
             {
@@ -23,7 +26,6 @@ namespace YetAnotherXamlPad
             };
 
             SetDomainData(defaultAppDomain, defaultDomain, guiRunnerState);
-            defaultDomainApplication.MainWindow = CreateMainWindow(guiRunnerState);
         }
 
         public static void RunGuiSession()
@@ -49,13 +51,12 @@ namespace YetAnotherXamlPad
             }
             else
             {
-                Debug.Assert(
-                    defaultDomain.Application.MainWindow != null,
-                    "By this time the default AppDomain's MainWindow should have been created.");
-
-                defaultDomain.Application.MainWindow.DataContext = CreateMainWindowViewModel(guiRunnerState);
-                defaultDomain.Application.MainWindow.Show();
-                defaultDomain.RunApplication();
+                defaultDomain.RunApplicationIfNotAlreadyRunning();
+                if (defaultDomain.Application.MainWindow != null)
+                {
+                    defaultDomain.Application.MainWindow.DataContext = CreateMainWindowViewModel(guiRunnerState);
+                    defaultDomain.Application.MainWindow.Show();
+                }
             }
         }
 
@@ -91,9 +92,7 @@ namespace YetAnotherXamlPad
         {
             var guiRunnerState = GetState();
             guiRunnerState.ObsoleteDomain = AppDomain.CurrentDomain;
-            var app = new App { MainWindow = CreateMainWindow(guiRunnerState) };
-            app.MainWindow.Show();
-            app.Run();
+            CreateApplication().Run();
         }
 
         private static DefaultDomain GetDefaultDomain()
@@ -115,12 +114,13 @@ namespace YetAnotherXamlPad
             return guiRunnerState;
         }
 
-        private static MainWindow CreateMainWindow(GuiRunnerState guiRunnerState)
+        private static Application CreateApplication()
         {
-            return new MainWindow
+            return new Application
             {
-                DataContext = CreateMainWindowViewModel(guiRunnerState),
-                Visibility = Visibility.Collapsed
+                StartupUri = new Uri(
+                    $"pack://application:,,,/{Assembly.GetExecutingAssembly().GetName().Name};component/MainWindow.xaml", 
+                    UriKind.Absolute)
             };
         }
 

@@ -7,6 +7,7 @@
         xmlns:local="clr-namespace:YetAnotherXamlPad"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=local:MainWindowViewModel, IsDesignTimeCreatable=False}"
+        DataContext="{x:Static local:GuiRunner.MainWindowViewModel}"
         Title="{Binding Title}">
   <Grid>
     <Grid.RowDefinitions>
