@@ -151,6 +151,7 @@ namespace YetAnotherXamlPad
 {
     public class ViewModel
     {
+        public static string Greetings = ""Hello, World!"";
     }
 }";
         private const string DefaultDomainDataName = "YetAnotherXamlPad.GuiRunner.DefaultDomain";

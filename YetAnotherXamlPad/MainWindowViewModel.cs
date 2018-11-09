@@ -1,10 +1,14 @@
 ﻿using System;
 using System.ComponentModel;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Markup;
 using System.Xml;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using ICSharpCode.AvalonEdit.Document;
+using static YetAnotherXamlPad.Do;
 
 namespace YetAnotherXamlPad
 {
@@ -125,7 +129,7 @@ namespace YetAnotherXamlPad
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged = Do.Nothing;
+        public event PropertyChangedEventHandler PropertyChanged = Nothing;
 
         private void OnXamlCodeChanged(object sender, EventArgs e)
         {
@@ -139,26 +143,50 @@ namespace YetAnotherXamlPad
 
         private void TryRenderXaml(string xamlCode)
         {
+            ExecuteAndReportErrors(() =>
             {
-                try
+                using (var stringReader = new StringReader(xamlCode))
+                using (var xmlreader = new XmlTextReader(stringReader))
                 {
-                    using (var stringReader = new StringReader(xamlCode))
-                    using (var xmlreader = new XmlTextReader(stringReader))
-                    {
-                        ParsedXaml = XamlReader.Load(xmlreader) as FrameworkElement;
-                    }
-
-                    Errors = null;
+                    ParsedXaml = XamlReader.Load(xmlreader) as FrameworkElement;
                 }
-                catch (Exception e)
-                {
-                    Errors = e.ToString();
-                }
-            }
+            });
         }
 
         private void TryBuildCSharpCode(string csharpCode)
         {
+            ExecuteAndReportErrors(() =>
+            {
+                var tree = CSharpSyntaxTree.ParseText(csharpCode);
+
+                var mscorlib = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
+                var compilation = CSharpCompilation.Create(
+                    "A" + Guid.NewGuid().ToString("N"),
+                    syntaxTrees: new[] { tree }, 
+                    references: new[] { mscorlib }, 
+                    options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+                using (var ms = new MemoryStream())
+                {
+                    var emitResult = compilation.Emit(ms);
+                    if (!emitResult.Success)
+                    {
+                        throw new InvalidOperationException(string.Join(Environment.NewLine, emitResult.Diagnostics));
+                    }
+
+                    Assembly.Load(ms.ToArray());
+                }
+            });
+        }
+
+        private void ExecuteAndReportErrors(Action action)
+        {
+            Try(() => 
+            {
+                action();
+                Errors = null;
+            })
+            .Catch(e => Errors = e.ToString());
         }
 
         private TextDocument _xamlCodeDocument;
