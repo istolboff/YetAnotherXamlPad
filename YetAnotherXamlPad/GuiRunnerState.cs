@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace YetAnotherXamlPad
 {
@@ -12,6 +14,10 @@ namespace YetAnotherXamlPad
 
         public bool FinishApplicationNow { get; set; }
 
+        public Either<KeyValuePair<string, byte[]>, Exception>? ViewModelAssembly { get; set; }
+
         public AppDomain ObsoleteDomain { get; set; }
+
+        public AutoResetEvent ViewModelAssemblyIsReady { get; set; }
     }
 }

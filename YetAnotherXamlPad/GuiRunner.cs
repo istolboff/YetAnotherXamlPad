@@ -1,14 +1,22 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using ICSharpCode.AvalonEdit.Document;
+using static YetAnotherXamlPad.Do;
+using static YetAnotherXamlPad.Either;
+using static YetAnotherXamlPad.ViewModelAssemblyBuilder;
 
 namespace YetAnotherXamlPad
 {
     internal static class GuiRunner 
     {
         public static MainWindowViewModel MainWindowViewModel => CreateMainWindowViewModel(GetState());
+
+        public static bool ViewModelAssemblyAlreadyLoaded => GetState().ViewModelAssembly?.IsLeft ?? false;
 
         public static void Setup(AppDomain defaultAppDomain)
         {
@@ -22,7 +30,8 @@ namespace YetAnotherXamlPad
             {
                 UseViewModels = false,
                 XamlCode = DefaultXamlCode,
-                ViewModelCode = DefaultViewModelCode
+                ViewModelCode = DefaultViewModelCode,
+                ViewModelAssemblyIsReady = new AutoResetEvent(initialState: false)
             };
 
             SetDomainData(defaultAppDomain, defaultDomain, guiRunnerState);
@@ -36,12 +45,6 @@ namespace YetAnotherXamlPad
 
             var guiRunnerState = GetState();
             guiRunnerState.FinishApplicationNow = true;
-
-            if (guiRunnerState.ObsoleteDomain != null)
-            {
-                AppDomain.Unload(guiRunnerState.ObsoleteDomain);
-                guiRunnerState.ObsoleteDomain = null;
-            }
 
             var defaultDomain = GetDefaultDomain();
             if (guiRunnerState.UseViewModels)
@@ -60,7 +63,11 @@ namespace YetAnotherXamlPad
             }
         }
 
-        public static void RequestGuiSessionRestart(bool useViewModels, string xamlCode, string viewModelCode)
+        public static void RequestGuiSessionRestart(
+            bool useViewModels, 
+            string xamlCode, 
+            string viewModelCode,
+            ViewModelAssemblyData? viewModelAssemblyData = default)
         {
             var guiRunnerState = GetState();
 
@@ -68,6 +75,26 @@ namespace YetAnotherXamlPad
             guiRunnerState.XamlCode = xamlCode;
             guiRunnerState.ViewModelCode = viewModelCode;
             guiRunnerState.FinishApplicationNow = false;
+            guiRunnerState.ViewModelAssembly = null;
+
+            if (useViewModels)
+            {
+                Task
+                    .Run(() => Try(() => 
+                                    BuildViewModelAssembly(
+                                        viewModelAssemblyData ?? 
+                                        TryParseViewModelCode(viewModelCode: viewModelCode, xamlCode: xamlCode)))
+                               .Catch(exception => Right(exception)))
+                    .ContinueWith(task =>
+                        {
+                            ReloadViewModelAssembly(
+                                task.IsCanceled 
+                                    ? Right<KeyValuePair<string, byte[]>, Exception>(new TaskCanceledException())
+                                    : task.Result);
+                            guiRunnerState.ViewModelAssemblyIsReady.Set();
+                        },
+                        TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.NotOnFaulted);
+            }
 
             if (!AppDomain.CurrentDomain.IsDefaultAppDomain())
             {
@@ -75,6 +102,18 @@ namespace YetAnotherXamlPad
             }
 
             GetDefaultDomain().InvokeOnDispatcher(RunGuiSession);
+        }
+
+        public static void ReloadViewModelAssembly(Either<KeyValuePair<string, byte[]>, Exception>? viewModelAssembly)
+        {
+            var guiRunnerState = GetState();
+
+            Debug.Assert(
+                AppDomain.CurrentDomain.IsDefaultAppDomain() || !(guiRunnerState.ViewModelAssembly?.IsLeft ?? false),
+                "Program logic error: ReloadViewModelAssembly() is called when a ViewModel's assembly is already loaded. " +
+                "A new GUI Session wityh a fresh AppDomain should be requested instead.");
+
+            guiRunnerState.ViewModelAssembly = viewModelAssembly;
         }
 
         private static void RunDevotedAppDomain(DefaultDomain defaultDomain, GuiRunnerState guiRunnerState)
@@ -91,7 +130,17 @@ namespace YetAnotherXamlPad
         private static void RunGuiInDevotedDomain()
         {
             var guiRunnerState = GetState();
+
+            guiRunnerState.ViewModelAssemblyIsReady.WaitOne();
+
+            if (guiRunnerState.ObsoleteDomain != null)
+            {
+                AppDomain.Unload(guiRunnerState.ObsoleteDomain);
+                guiRunnerState.ObsoleteDomain = null;
+            }
             guiRunnerState.ObsoleteDomain = AppDomain.CurrentDomain;
+
+            AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
             CreateApplication().Run();
         }
 
@@ -139,11 +188,20 @@ namespace YetAnotherXamlPad
             appDomain.SetData(StateDataName, guiRunnerState);
         }
 
+        private static Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            var assemblyData = GetState().ViewModelAssembly?.Fold(kvp => kvp, _ => default);
+            return args.Name.Equals(assemblyData?.Key, StringComparison.OrdinalIgnoreCase) 
+                ? Assembly.Load(assemblyData?.Value) 
+                : null;
+        }
+
         private const string DefaultXamlCode = 
 @"<Page
     xmlns = ""http://schemas.microsoft.com/winfx/2006/xaml/presentation""
     xmlns:sys = ""clr-namespace:System;assembly=mscorlib""
     xmlns:x = ""http://schemas.microsoft.com/winfx/2006/xaml"">
+    <Button Content=""OK""/>
 </Page>";
 
         private const string DefaultViewModelCode = 

@@ -1,4 +1,5 @@
-﻿using JetBrains.Annotations;
+﻿using System;
+using JetBrains.Annotations;
 
 namespace YetAnotherXamlPad
 {
@@ -8,6 +9,8 @@ namespace YetAnotherXamlPad
         public MainWindow()
         {
             InitializeComponent();
+            Closed += (_, __) => (DataContext as IDisposable)?.Dispose();
+            DataContextChanged += (_, args) => (args.OldValue as IDisposable)?.Dispose();
         }
     }
 }
