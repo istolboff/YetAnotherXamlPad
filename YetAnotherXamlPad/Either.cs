@@ -10,17 +10,17 @@ namespace YetAnotherXamlPad
         {
             _left = left;
             _right = right;
-            IsLeft = isLeft;
+            _isLeft = isLeft;
         }
 
         public TResult Fold<TResult>(Func<TLeft, TResult> getFromLeft, Func<TRight, TResult> getFromRight)
         {
-            return IsLeft ? getFromLeft(_left) : getFromRight(_right);
+            return _isLeft ? getFromLeft(_left) : getFromRight(_right);
         }
 
         public void Fold(Action<TLeft> processLeft, Action<TRight> processRight)
         {
-            if (IsLeft)
+            if (_isLeft)
             {
                 processLeft(_left);
             }
@@ -30,20 +30,19 @@ namespace YetAnotherXamlPad
             }
         }
 
-        public bool IsLeft { get; }
-
         public static implicit operator Either<TLeft, TRight>(EitherLeftFactory<TLeft> leftFactory)
         {
             return new Either<TLeft, TRight>(leftFactory.Left, default, true);
         }
 
-        public static implicit operator Either<TLeft, TRight>(EitherRightFactory<TRight> rightFactory)
+        public static implicit operator Either<TLeft, TRight>(EitherRightFactory<TRight> rightFactory) 
         {
             return new Either<TLeft, TRight>(default, rightFactory.Right, false);
         }
 
         // Immutable fields would prevent Either from being de-serialized an a different AppDomain.
         // ReSharper disable FieldCanBeMadeReadOnly.Local
+        private bool _isLeft;
         private TLeft _left;
         private TRight _right;
         // ReSharper enable FieldCanBeMadeReadOnly.Local
@@ -69,6 +68,25 @@ namespace YetAnotherXamlPad
         public static EitherRightFactory<TRight> Right<TRight>(TRight right)
         {
             return new EitherRightFactory<TRight>(right);
+        }
+
+        public static Either<TLeft, TResult>? Map<TLeft, TRight, TResult>(
+            this Either<TLeft, TRight>? @this, 
+            Func<TRight, TResult> getFromRight)
+        {
+            return @this?.Fold(Left<TLeft, TResult>, right => Right<TLeft, TResult>(getFromRight(right)));
+        }
+
+        public static Either<TLeft, TResult>? FlatMap<TLeft, TRight, TResult>(
+            this Either<TLeft, TRight>? @this,
+            Func<TRight, Either<TLeft, TResult>> getFromRight)
+        {
+            return @this?.Fold(left => Left<TLeft, TResult>(left), getFromRight);
+        }
+
+        public static TRight GetOrElse<TLeft, TRight>(this Either<TLeft, TRight> @this, TRight or = default)
+        {
+            return @this.Fold(_ => or, right => right);
         }
     }
 

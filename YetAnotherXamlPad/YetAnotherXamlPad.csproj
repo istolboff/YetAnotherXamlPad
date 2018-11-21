@@ -27,6 +27,7 @@
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>true</Prefer32Bit>
     <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -38,6 +39,7 @@
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>true</Prefer32Bit>
     <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ICSharpCode.AvalonEdit, Version=5.0.3.0, Culture=neutral, PublicKeyToken=9cc39be672370310, processorArchitecture=MSIL">
@@ -81,15 +83,18 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AdHocExtensions.cs" />
+    <Compile Include="DataReadyEvent.cs" />
+    <Compile Include="Unit.cs" />
+    <Compile Include="ViewModelAssemblyBuilder.cs" />
     <Compile Include="DefaultDomain.cs" />
     <Compile Include="Either.cs" />
     <Compile Include="GuiRunner.cs" />
-    <Compile Include="GuiRunnerState.cs" />
     <Compile Include="Make.cs" />
+    <Compile Include="ParsedViewModelCode.cs" />
     <Compile Include="Startup.cs" />
     <Compile Include="Do.cs" />
-    <Compile Include="ViewModelAssemblyData.cs" />
-    <Compile Include="ViewModelAssemblyBuilder.cs" />
+    <Compile Include="XamlCode.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

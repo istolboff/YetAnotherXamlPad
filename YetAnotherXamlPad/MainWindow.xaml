@@ -22,6 +22,7 @@
         <avalonedit:TextEditor
           SyntaxHighlighting="XML"
           FontSize="16"
+          ShowLineNumbers="True"
           Document="{Binding XamlCodeDocument, UpdateSourceTrigger=PropertyChanged}"/>
       </TabItem>
       <TabItem>
@@ -34,6 +35,7 @@
         <avalonedit:TextEditor
           SyntaxHighlighting="C#"
           FontSize="16"
+          ShowLineNumbers="True"
           IsEnabled="{Binding UseViewModels}"
           Document="{Binding ViewModelCodeDocument, UpdateSourceTrigger=PropertyChanged}"/>
       </TabItem>

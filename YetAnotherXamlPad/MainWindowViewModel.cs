@@ -7,9 +7,10 @@ using System.Windows;
 using System.Windows.Markup;
 using System.Windows.Threading;
 using System.Xml;
+using JetBrains.Annotations;
 using ICSharpCode.AvalonEdit.Document;
 using static YetAnotherXamlPad.Do;
-using static YetAnotherXamlPad.Either;
+using static YetAnotherXamlPad.ParsedViewModelCode;
 using static YetAnotherXamlPad.ViewModelAssemblyBuilder;
 
 namespace YetAnotherXamlPad
@@ -19,6 +20,10 @@ namespace YetAnotherXamlPad
         public MainWindowViewModel(bool useViewModels)
         {
             _useViewModels = useViewModels;
+            if (GuiRunner.StartupError != null)
+            {
+                ReportError(GuiRunner.StartupError);
+            }
         }
 
         public string Title => AppDomain.CurrentDomain.FriendlyName;
@@ -49,7 +54,6 @@ namespace YetAnotherXamlPad
                 }
 
                 _xamlCodeDocument = value;
-                _xamlCodeChanges = value != null ? CreateTextChangeObservable(value) : null;
                 ResubscribeToEditorsChanges();
 
                 PropertyChanged(this, new PropertyChangedEventArgs(nameof(XamlCodeDocument)));
@@ -83,7 +87,6 @@ namespace YetAnotherXamlPad
                 }
 
                 _viewModelCodeDocument = value;
-                _viewModelCodeChanges = value != null ? CreateTextChangeObservable(value) : null;
                 ResubscribeToEditorsChanges();
 
                 PropertyChanged(this, new PropertyChangedEventArgs(nameof(ViewModelCodeDocument)));
@@ -131,104 +134,66 @@ namespace YetAnotherXamlPad
         {
             _editorsChangeSubscription.Dispose();
 
-            if (_xamlCodeChanges == null || _viewModelCodeChanges == null)
+            if (_xamlCodeDocument == null || _viewModelCodeDocument == null)
             {
                 return;
             }
 
+            var xamlCodeChanges = CreateTextChangeObservable(_xamlCodeDocument);
+
             var dispatcher = Dispatcher.CurrentDispatcher;
 
-            var compositeDisposable = new CompositeDisposable(
-                    // XAML code changes
-                    _xamlCodeChanges.Throttle(TimeSpan.FromMilliseconds(500)).Subscribe(_ => TryRenderXaml(dispatcher)));
-
-            if (UseViewModels)
+            if (!UseViewModels)
             {
-                compositeDisposable.Add(
-                    // ViewModel code changes
-                    (from viewModelCode in _viewModelCodeChanges.Throttle(TimeSpan.FromMilliseconds(1500))
-                     let xamlCode = dispatcher.Invoke(() => _xamlCodeDocument.Text)
-                     select Try(() => Left(TryParseViewModelCode(viewModelCode: viewModelCode, xamlCode: xamlCode))).Catch(Right))
-                    .Subscribe(
-                        viewModelAssemblyDataOrException => TryUseUpdatedViewModelCode(viewModelAssemblyDataOrException, ChangeSource.Csharp, dispatcher),
-                        exception => ReportError(exception, dispatcher)));
+                _editorsChangeSubscription = xamlCodeChanges
+                    .Throttle(XamlChangeThrottlingInterval)
+                    .Subscribe(xamlCode => dispatcher.Post(() => RenderXaml(xamlCode)));
+            }
+            else
+            {
+                var viewModelCodeChanges = CreateTextChangeObservable(_viewModelCodeDocument);
+
+                var rawXamlChanges = xamlCodeChanges
+                    .Throttle(XamlChangeThrottlingInterval)
+                    .Select(xamlCode => new XamlCode(xamlCode));
+
+                var rawViewModelChanges = viewModelCodeChanges
+                    .Throttle(CsharpChangeThrottlingInterval)
+                    .Select(TryParseViewModelCode);
+
+                var codeChangesListener = new CodeChangesListener(
+                    xamlCode: new XamlCode(_xamlCodeDocument.Text), 
+                    viewModelCode: _viewModelCodeDocument.Text, 
+                    target: this, 
+                    dispatcher: dispatcher);
+
+                _editorsChangeSubscription = new CompositeDisposable(
+                    rawXamlChanges.Subscribe(xamlCode => codeChangesListener.XamlChanged(xamlCode)),
+                    rawViewModelChanges.Subscribe(viewModelChange => codeChangesListener.ViewModelChanged(viewModelChange)));
             }
 
-            _editorsChangeSubscription = compositeDisposable;
-
-            TryRenderXaml(dispatcher);
+            RenderXaml(_xamlCodeDocument.Text);
         }
 
-        private void TryRenderXaml(Dispatcher dispatcher)
+        private void RenderXaml(string xamlCode)
         {
-            if (dispatcher.Invoke(() => _useViewModels))
+            ExecuteAndReportErrors(() =>
             {
-                if (!GuiRunner.ViewModelAssemblyAlreadyLoaded)
+                using (var stringReader = new StringReader(xamlCode))
+                using (var xmlreader = new XmlTextReader(stringReader))
                 {
-                    var (xamlCode, viewModelCode) = dispatcher.Invoke(() => (_xamlCodeDocument.Text, _viewModelCodeDocument.Text));
-                    var viewModelAssemblyDataOrException = Try(() => Left(TryParseViewModelCode(viewModelCode: viewModelCode, xamlCode: xamlCode))).Catch(Right);
-                    TryUseUpdatedViewModelCode(viewModelAssemblyDataOrException, ChangeSource.Xaml, dispatcher);
-                    return;
+                    ParsedXaml = XamlReader.Load(xmlreader) as FrameworkElement;
                 }
-            }
-
-            TryRenderXamlCore(dispatcher);
+            });
         }
 
-        private void TryRenderXamlCore(Dispatcher dispatcher)
-        {
-            dispatcher.Invoke(() =>
-                ExecuteAndReportErrors(() =>
-                {
-                    using (var stringReader = new StringReader(_xamlCodeDocument.Text))
-                    using (var xmlreader = new XmlTextReader(stringReader))
-                    {
-                        ParsedXaml = XamlReader.Load(xmlreader) as FrameworkElement;
-                    }
-                }));
-        }
-
-        private void TryUseUpdatedViewModelCode(
-            Either<ViewModelAssemblyData?, Exception> viewModelAssemblyDataOrException,
-            ChangeSource changeSource,
-            Dispatcher dispatcher)
-        {
-            viewModelAssemblyDataOrException.Fold(
-                viewModelAssemblyData =>
-                {
-                    if (!GuiRunner.ViewModelAssemblyAlreadyLoaded)
-                    {
-                        var viewModelAssembly = BuildViewModelAssembly(viewModelAssemblyData);
-                        GuiRunner.ReloadViewModelAssembly(viewModelAssembly);
-                        if (viewModelAssembly != null)
-                        {
-                            viewModelAssembly.Value.Fold(
-                                _ => TryRenderXamlCore(dispatcher),
-                                exception => ReportError(exception, dispatcher));
-                        }
-                        else
-                        {
-                            if (changeSource == ChangeSource.Xaml)
-                            {
-                                TryRenderXamlCore(dispatcher);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        dispatcher.Invoke(() => RequestGuiSessionRestart(viewModelAssemblyData));
-                    }
-                },
-                exception => ReportError(exception, dispatcher));
-        }
-
-        private void RequestGuiSessionRestart(ViewModelAssemblyData? viewModelAssemblyData = default)
+        private void RequestGuiSessionRestart(ViewModelAssemblyBuilder assemblyBuilder = null)
         {
             GuiRunner.RequestGuiSessionRestart(
                 useViewModels: _useViewModels, 
                 xamlCode: _xamlCodeDocument.Text, 
                 viewModelCode: _viewModelCodeDocument.Text,
-                viewModelAssemblyData: viewModelAssemblyData);
+                assemblyBuilder: assemblyBuilder);
         }
 
         private void ExecuteAndReportErrors(Action action)
@@ -247,11 +212,6 @@ namespace YetAnotherXamlPad
             ErrorTabColor = null;
         }
 
-        private void ReportError(Exception exception, Dispatcher dispatcher)
-        {
-            dispatcher.Invoke(() => ReportError(exception));
-        }
-
         private void ReportError(Exception exception)
         {
             Errors = exception.ToString();
@@ -259,7 +219,7 @@ namespace YetAnotherXamlPad
             ParsedXaml = null;
         }
 
-        private static IObservable<string> CreateTextChangeObservable(TextDocument textDocument)
+        private static IObservable<string> CreateTextChangeObservable([NotNull] TextDocument textDocument)
         {
             return Observable
                     .FromEventPattern(
@@ -269,15 +229,129 @@ namespace YetAnotherXamlPad
         }
 
         private FrameworkElement _parsedXaml;
-        private TextDocument _xamlCodeDocument;
         private bool _useViewModels;
+        private TextDocument _xamlCodeDocument;
         private TextDocument _viewModelCodeDocument;
-        private IObservable<string> _xamlCodeChanges;
-        private IObservable<string> _viewModelCodeChanges;
         private string _errors;
         private string _errorTabColor;
         private IDisposable _editorsChangeSubscription = Disposable.Empty;
 
-        private enum ChangeSource { Xaml, Csharp }
+        private static readonly TimeSpan XamlChangeThrottlingInterval = TimeSpan.FromMilliseconds(500);
+        private static readonly TimeSpan CsharpChangeThrottlingInterval = TimeSpan.FromMilliseconds(1500);
+
+        private class CodeChangesListener
+        {
+            public CodeChangesListener(XamlCode xamlCode, string viewModelCode, MainWindowViewModel target, Dispatcher dispatcher)
+            {
+                _target = target;
+                _dispatcher = dispatcher;
+                _xamlCode = xamlCode;
+                _viewModelCode = TryParseViewModelCode(viewModelCode);
+            }
+
+            public void XamlChanged(XamlCode xamlCode)
+            {
+                lock (_locker)
+                {
+                    var mentionedAssembliesChanged = _xamlCode.MentionedAssembliesDiffer(xamlCode);
+                    _xamlCode = xamlCode;
+
+                    if (!mentionedAssembliesChanged)
+                    {
+                        RenderXaml();
+                        return;
+                    }
+
+                    var assemblyBuilderOrException = TryCreateAssemblyBuilder(_xamlCode, _viewModelCode);
+                    if (!CanViewModelAssemblyBeLoadedInCurrentAppDomain(assemblyBuilderOrException))
+                    {
+                        RenderXaml();
+                        return;
+                    }
+
+                    BuildAndUseNewAssembly(assemblyBuilderOrException.Value);
+                }
+            }
+
+            public void ViewModelChanged(ParsedViewModelCode? viewModelCode)
+            {
+                lock (_locker)
+                {
+                    if (viewModelCode == null)
+                    {
+                        if (_viewModelCode != null && 
+                            !GuiRunner.CanViewModelAssemblyBeLoadedInCurrentAppDomain(
+                                TryCreateAssemblyBuilder(_xamlCode, _viewModelCode)?.GetOrElse()?.AssemblyName))
+                        { 
+                            _dispatcher.Post(() => _target.RequestGuiSessionRestart());
+                        }
+
+                        _viewModelCode = null;
+                        return;
+                    }
+
+                    _viewModelCode = viewModelCode;
+
+                    var assemblyBuilderOrException = TryCreateAssemblyBuilder(_xamlCode, _viewModelCode);
+
+                    if (assemblyBuilderOrException == null)
+                    {
+                        return;
+                    }
+
+                    if (CanViewModelAssemblyBeLoadedInCurrentAppDomain(assemblyBuilderOrException))
+                    {
+                        BuildAndUseNewAssembly(assemblyBuilderOrException.Value);
+                    }
+                    else
+                    {
+                        _dispatcher.Post(() =>
+                            assemblyBuilderOrException.Value.Fold(
+                                _target.ReportError,
+                                _target.RequestGuiSessionRestart));
+                    }
+                }
+            }
+
+            private void BuildAndUseNewAssembly(Either<Exception, ViewModelAssemblyBuilder> assemblyBuilderOrException)
+            {
+                assemblyBuilderOrException.Fold(
+                    ReportError,
+                    assemblyBuilder =>
+                    {
+                        assemblyBuilder.Build().Fold(
+                            ReportError,
+                            assemblyData =>
+                            {
+                                GuiRunner.SetViewModelAssembly(assemblyData);
+                                RenderXaml();
+                            });
+                    });
+            }
+
+            private void RenderXaml()
+            {
+                _dispatcher.Post(() => _target.RenderXaml(_xamlCode.Text));
+            }
+
+            private void ReportError(Exception exception)
+            {
+                _dispatcher.Post(() => _target.ReportError(exception));
+            }
+
+            private static bool CanViewModelAssemblyBeLoadedInCurrentAppDomain(
+                Either<Exception, ViewModelAssemblyBuilder>? assemblyBuilderOrException)
+            {
+                return GuiRunner.CanViewModelAssemblyBeLoadedInCurrentAppDomain(
+                    assemblyBuilderOrException?.GetOrElse()?.AssemblyName);
+            }
+
+            private readonly MainWindowViewModel _target;
+            private readonly Dispatcher _dispatcher;
+            private readonly object _locker = new object();
+
+            private XamlCode _xamlCode;
+            private ParsedViewModelCode? _viewModelCode;
+        }
     }
 }

@@ -1,41 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Xml.Linq;
+using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using JetBrains.Annotations;
 using static YetAnotherXamlPad.Either;
 
 namespace YetAnotherXamlPad
 {
-    internal static class ViewModelAssemblyBuilder
+    internal class ViewModelAssemblyBuilder
     {
-        public static ViewModelAssemblyData? TryParseViewModelCode(string viewModelCode, string xamlCode)
+        private ViewModelAssemblyBuilder([NotNull] string assemblyName, [NotNull] SyntaxTree syntaxTree)
         {
-            var parsedCode = CSharpSyntaxTree.ParseText(viewModelCode);
-            var namespaceName = TryExtractViewModelNamespace(parsedCode);
-            if (string.IsNullOrWhiteSpace(namespaceName))
-            {
-                return null;
-            }
-
-            var assemblyName = TryExtractAssemblyNameForViewModelNamespace(xamlCode, namespaceName);
-            return assemblyName == null ? (ViewModelAssemblyData?)null : new ViewModelAssemblyData(parsedCode, assemblyName);
+            AssemblyName = assemblyName;
+            _syntaxTree = syntaxTree;
         }
 
-        public static Either<KeyValuePair<string, byte[]>, Exception>? BuildViewModelAssembly(
-            ViewModelAssemblyData? viewModelAssemblyData)
-        {
-            if (viewModelAssemblyData == null)
-            {
-                return null;
-            }
+        public string AssemblyName { get; }
 
+        public Either<Exception, KeyValuePair<string, byte[]>> Build()
+        {
             var compilation = CSharpCompilation.Create(
-                viewModelAssemblyData.Value.AssemblyName,
-                syntaxTrees: new[] { viewModelAssemblyData.Value.SyntaxTree },
+                AssemblyName,
+                syntaxTrees: new[] { _syntaxTree },
                 references: new[] { MscorLib },
                 options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
@@ -43,43 +31,49 @@ namespace YetAnotherXamlPad
             {
                 var emitResult = compilation.Emit(memoryStream);
                 return emitResult.Success
-                    ? Left<KeyValuePair<string, byte[]>, Exception>(Make.Pair(viewModelAssemblyData.Value.AssemblyName, memoryStream.ToArray()))
-                    : Right(new InvalidOperationException(string.Join(Environment.NewLine, emitResult.Diagnostics)) as Exception);
+                    ? Right<Exception, KeyValuePair<string, byte[]>>(Make.Pair(AssemblyName, memoryStream.ToArray()))
+                    : Left((Exception)new InvalidOperationException(string.Join(Environment.NewLine, emitResult.Diagnostics)));
             }
         }
 
-        private static string TryExtractAssemblyNameForViewModelNamespace(string xamlCode, string viewModelNamespaceName)
+        public static Either<Exception, ViewModelAssemblyBuilder>? TryCreateAssemblyBuilder(
+            XamlCode xamlCode, 
+            ParsedViewModelCode? viewModelCode)
         {
-            if (string.IsNullOrEmpty(xamlCode) || string.IsNullOrEmpty(viewModelNamespaceName))
-            {
-                return null;
-            }
-
-            var xamlMarkupRoot = XDocument.Parse(xamlCode).Root;
-            if (xamlMarkupRoot == null)
-            {
-                return null;
-            }
-
-            var expectedPrefix = $"clr-namespace:{viewModelNamespaceName};assembly=";
-            var relevantUrl = xamlMarkupRoot
-                .Attributes()
-                .Where(a => a.IsNamespaceDeclaration)
-                .GroupBy(
-                    a => a.Name.Namespace == XNamespace.None ? string.Empty : a.Name.LocalName,
-                    a => XNamespace.Get(a.Value))
-                .ToDictionary(g => g.Key, g => g.First())
-                .Values
-                .FirstOrDefault(url => url.ToString().StartsWith(expectedPrefix));
-
-            return relevantUrl?.ToString().Substring(expectedPrefix.Length);
+            return viewModelCode == null 
+                ? default 
+                : TryGetViewModelAssemblyName(xamlCode, viewModelCode.Value)
+                    .Map(assemblyName => new ViewModelAssemblyBuilder(assemblyName, viewModelCode.Value.SyntaxTree));
         }
 
-        private static string TryExtractViewModelNamespace(SyntaxTree synaxTree)
+        private static Either<Exception, string>? TryGetViewModelAssemblyName(
+            XamlCode xamlCode, 
+            ParsedViewModelCode viewModelCode)
         {
-            var namespaces = synaxTree.GetRoot().DescendantNodes().OfType<NamespaceDeclarationSyntax>().ToArray();
-            return (namespaces.Length == 1) ? namespaces.Single().Name.ToString() : null;
+            var namesOfAssembliesThatContainViewModelNamespaces = xamlCode.MentionedAssemblies
+                    .Where(kvp => kvp.Value.Intersect(viewModelCode.NamespaceNames).Any())
+                    .Select(kvp => kvp.Key)
+                    .AsImmutable();
+
+
+            switch (namesOfAssembliesThatContainViewModelNamespaces.Count)
+            {
+                case 0:
+                    return default;
+
+                case 1:
+                    return Right(namesOfAssembliesThatContainViewModelNamespaces.Single());
+
+                default:
+                    return Left(
+                        (Exception)new InvalidOperationException(
+                            "XAML namespaces erroneousely mention ViewModel's namespaces belonging to the following assemblies: " +
+                            string.Join(",", namesOfAssembliesThatContainViewModelNamespaces) +
+                            ". Please use *single* assembly name for all ViewModel namespaces."));
+            }
         }
+
+        private readonly SyntaxTree _syntaxTree;
 
         private static readonly MetadataReference MscorLib = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
     }

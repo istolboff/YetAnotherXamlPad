@@ -8,7 +8,7 @@ namespace YetAnotherXamlPad
         {
         }
 
-        public static (Func<Func<Exception, TResult>, TResult> Catch, byte __unsued) Try<TResult>(Func<TResult> func)
+        public static (Func<Func<Exception, TResult>, TResult> Catch, Unit) Try<TResult>(Func<TResult> func)
         {
             var Catch = new Func<Func<Exception, TResult>, TResult>(@catch =>
             {
@@ -32,23 +32,13 @@ namespace YetAnotherXamlPad
             return (Catch, default);
         }
 
-        public static (Action<Action<Exception>> Catch, byte __unsued) Try(Action action)
+        public static (Action<Action<Exception>> Catch, Unit) Try(Action action)
         {
             var @try = Try(() => { action(); return 0; });
             var Catch = new Action<Action<Exception>>(@catch =>
             {
                 @try.Catch(exception => { @catch(exception); return 0; });
             });
-
-            return (Catch, default);
-        }
-
-        public static (Func<Func<Exception, EitherRightFactory<Exception>>, Either<TResult, Exception>> Catch, byte __unsued) Try<TResult>(
-            Func<EitherLeftFactory<TResult>> func)
-        {
-            var @try = Try(() => Either.Left<TResult, Exception>(func().Left));
-            var Catch = new Func<Func<Exception, EitherRightFactory<Exception>>, Either<TResult, Exception>>(@catch =>
-                @try.Catch(exception => Either.Right(@catch(exception).Right)));
             return (Catch, default);
         }
     }
