@@ -13,10 +13,8 @@ namespace YetAnotherXamlPad
             _isLeft = isLeft;
         }
 
-        public TResult Fold<TResult>(Func<TLeft, TResult> getFromLeft, Func<TRight, TResult> getFromRight)
-        {
-            return _isLeft ? getFromLeft(_left) : getFromRight(_right);
-        }
+        public TResult Fold<TResult>(Func<TLeft, TResult> getFromLeft, Func<TRight, TResult> getFromRight) =>
+            _isLeft ? getFromLeft(_left) : getFromRight(_right);
 
         public void Fold(Action<TLeft> processLeft, Action<TRight> processRight)
         {
@@ -30,15 +28,11 @@ namespace YetAnotherXamlPad
             }
         }
 
-        public static implicit operator Either<TLeft, TRight>(EitherLeftFactory<TLeft> leftFactory)
-        {
-            return new Either<TLeft, TRight>(leftFactory.Left, default, true);
-        }
+        public static implicit operator Either<TLeft, TRight>(EitherLeftFactory<TLeft> leftFactory) =>
+            new Either<TLeft, TRight>(leftFactory.Left, default, true);
 
-        public static implicit operator Either<TLeft, TRight>(EitherRightFactory<TRight> rightFactory) 
-        {
-            return new Either<TLeft, TRight>(default, rightFactory.Right, false);
-        }
+        public static implicit operator Either<TLeft, TRight>(EitherRightFactory<TRight> rightFactory) =>
+            new Either<TLeft, TRight>(default, rightFactory.Right, false);
 
         // Immutable fields would prevent Either from being de-serialized an a different AppDomain.
         // ReSharper disable FieldCanBeMadeReadOnly.Local
@@ -50,44 +44,30 @@ namespace YetAnotherXamlPad
 
     internal static class Either
     {
-        public static Either<TLeft, TRight> Left<TLeft, TRight>(TLeft left)
-        {
-            return new Either<TLeft, TRight>(left, default, true);
-        }
+        public static Either<TLeft, TRight> Left<TLeft, TRight>(TLeft left) =>
+            new Either<TLeft, TRight>(left, default, true);
 
-        public static Either<TLeft, TRight> Right<TLeft, TRight>(TRight right)
-        {
-            return new Either<TLeft, TRight>(default, right, false);
-        }
+        public static Either<TLeft, TRight> Right<TLeft, TRight>(TRight right) =>
+            new Either<TLeft, TRight>(default, right, false);
 
-        public static EitherLeftFactory<TLeft> Left<TLeft>(TLeft left)
-        {
-            return new EitherLeftFactory<TLeft>(left);
-        }
+        public static EitherLeftFactory<TLeft> Left<TLeft>(TLeft left) =>
+            new EitherLeftFactory<TLeft>(left);
 
-        public static EitherRightFactory<TRight> Right<TRight>(TRight right)
-        {
-            return new EitherRightFactory<TRight>(right);
-        }
+        public static EitherRightFactory<TRight> Right<TRight>(TRight right) =>
+            new EitherRightFactory<TRight>(right);
 
         public static Either<TLeft, TResult>? Map<TLeft, TRight, TResult>(
             this Either<TLeft, TRight>? @this, 
-            Func<TRight, TResult> getFromRight)
-        {
-            return @this?.Fold(Left<TLeft, TResult>, right => Right<TLeft, TResult>(getFromRight(right)));
-        }
+            Func<TRight, TResult> getFromRight) =>
+            @this?.Fold(Left<TLeft, TResult>, right => Right<TLeft, TResult>(getFromRight(right)));
 
         public static Either<TLeft, TResult>? FlatMap<TLeft, TRight, TResult>(
             this Either<TLeft, TRight>? @this,
-            Func<TRight, Either<TLeft, TResult>> getFromRight)
-        {
-            return @this?.Fold(left => Left<TLeft, TResult>(left), getFromRight);
-        }
+            Func<TRight, Either<TLeft, TResult>> getFromRight) => 
+            @this?.Fold(left => Left<TLeft, TResult>(left), getFromRight);
 
-        public static TRight GetOrElse<TLeft, TRight>(this Either<TLeft, TRight> @this, TRight or = default)
-        {
-            return @this.Fold(_ => or, right => right);
-        }
+        public static TRight GetOrElse<TLeft, TRight>(this Either<TLeft, TRight> @this, TRight or = default) =>
+            @this.Fold(_ => or, right => right);
     }
 
     internal struct EitherLeftFactory<TLeft>

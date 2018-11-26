@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
+using static YetAnotherXamlPad.Do;
 using AssemblyName = System.String;
 
 namespace YetAnotherXamlPad
@@ -31,24 +32,28 @@ namespace YetAnotherXamlPad
                 return new Dictionary<AssemblyName, IReadOnlyCollection<string>>();
             }
 
-            var xamlMarkupRoot = XDocument.Parse(xamlCode).Root;
-            if (xamlMarkupRoot == null)
+            return Try(() =>
             {
-                return new Dictionary<AssemblyName, IReadOnlyCollection<string>>();
-            }
+                var xamlMarkupRoot = XDocument.Parse(xamlCode).Root;
+                if (xamlMarkupRoot == null)
+                {
+                    return new Dictionary<AssemblyName, IReadOnlyCollection<string>>();
+                }
 
-            return xamlMarkupRoot
-                .Attributes()
-                .Where(a => a.IsNamespaceDeclaration)
-                .GroupBy(
-                    a => a.Name.Namespace == XNamespace.None ? string.Empty : a.Name.LocalName,
-                    a => XNamespace.Get(a.Value))
-                .ToDictionary(g => g.Key, g => g.First())
-                .Values
-                .Select(url => TryToExtractNamespaceAndAssemblyNames(url.ToString()))
-                .Where(names => !string.IsNullOrWhiteSpace(names.assemblyName))
-                .GroupBy(names => names.assemblyName)
-                .ToDictionary(g => g.Key, g => g.Select(it => it.clrNamespaceName).AsImmutable());
+                return xamlMarkupRoot
+                    .Attributes()
+                    .Where(a => a.IsNamespaceDeclaration)
+                    .GroupBy(
+                        a => a.Name.Namespace == XNamespace.None ? string.Empty : a.Name.LocalName,
+                        a => XNamespace.Get(a.Value))
+                    .ToDictionary(g => g.Key, g => g.First())
+                    .Values
+                    .Select(url => TryToExtractNamespaceAndAssemblyNames(url.ToString()))
+                    .Where(names => !string.IsNullOrWhiteSpace(names.assemblyName))
+                    .GroupBy(names => names.assemblyName)
+                    .ToDictionary(g => g.Key, g => g.Select(it => it.clrNamespaceName).AsImmutable());
+            })
+            .Catch(_ => new Dictionary<AssemblyName, IReadOnlyCollection<string>>());
         }
 
         private static (string clrNamespaceName, string assemblyName) TryToExtractNamespaceAndAssemblyNames(string namespaceDefinition)

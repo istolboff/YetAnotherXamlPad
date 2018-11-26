@@ -132,7 +132,7 @@ namespace YetAnotherXamlPad
 
             assemblyDataOrException?.Fold(
                 exception => guiRunnerState.StartupError = exception, 
-                assemblyData => SetViewModelAssembly(assemblyData));
+                SetViewModelAssembly);
 
             AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
             CreateApplication().Run();
@@ -265,7 +265,7 @@ namespace YetAnotherXamlPad
                 return _viewModelAssemblyIsReady.Wait();
             }
 
-            private DataReadyEvent<BuiltAssemblyOrException?> _viewModelAssemblyIsReady = new DataReadyEvent<BuiltAssemblyOrException?>();
+            private readonly DataReadyEvent<BuiltAssemblyOrException?> _viewModelAssemblyIsReady = new DataReadyEvent<BuiltAssemblyOrException?>();
         }
     }
 }

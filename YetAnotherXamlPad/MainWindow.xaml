@@ -39,10 +39,16 @@
           IsEnabled="{Binding UseViewModels}"
           Document="{Binding ViewModelCodeDocument, UpdateSourceTrigger=PropertyChanged}"/>
       </TabItem>
-      <TabItem Content="{Binding Errors}">
+      <TabItem>
         <TabItem.Header>
             <TextBlock Text="Errors" Background="{Binding ErrorTabColor}"/>
         </TabItem.Header>
+        <TabItem.Content>
+          <UniformGrid Columns="2" Rows="1" DataContext="{Binding Errors}">
+            <TextBlock Text="{Binding XamlError}"/>
+            <TextBlock Text="{Binding ViewModelError}"/>
+          </UniformGrid>
+        </TabItem.Content>
       </TabItem>
     </TabControl>
   </Grid>

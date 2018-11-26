@@ -20,9 +20,12 @@ namespace YetAnotherXamlPad
         public MainWindowViewModel(bool useViewModels)
         {
             _useViewModels = useViewModels;
+
+            Errors = new ErrorsViewModel();
+
             if (GuiRunner.StartupError != null)
             {
-                ReportError(GuiRunner.StartupError);
+                ReportError(GuiRunner.StartupError, ErrorSource.ViewModel);
             }
         }
 
@@ -93,20 +96,7 @@ namespace YetAnotherXamlPad
             }
         }
 
-        public string Errors
-        {
-            get => _errors;
-            set
-            {
-                if (_errors == value)
-                {
-                    return;
-                }
-
-                _errors = value;
-                PropertyChanged(this, new PropertyChangedEventArgs(nameof(Errors)));
-            }
-        }
+        public ErrorsViewModel Errors { get; }
 
         public string ErrorTabColor
         {
@@ -177,14 +167,17 @@ namespace YetAnotherXamlPad
 
         private void RenderXaml(string xamlCode)
         {
-            ExecuteAndReportErrors(() =>
+            Try(() =>
             {
                 using (var stringReader = new StringReader(xamlCode))
                 using (var xmlreader = new XmlTextReader(stringReader))
                 {
                     ParsedXaml = XamlReader.Load(xmlreader) as FrameworkElement;
                 }
-            });
+
+                ClearError();
+            })
+            .Catch(exception => ReportError(exception, ErrorSource.Xaml));
         }
 
         private void RequestGuiSessionRestart(ViewModelAssemblyBuilder assemblyBuilder = null)
@@ -196,25 +189,28 @@ namespace YetAnotherXamlPad
                 assemblyBuilder: assemblyBuilder);
         }
 
-        private void ExecuteAndReportErrors(Action action)
-        {
-            Try(() => 
-            {
-                action();
-                ClearError();
-            })
-            .Catch(ReportError);
-        }
-
         private void ClearError()
         {
-            Errors = null;
+            Errors.ClearErrors();
             ErrorTabColor = null;
         }
 
-        private void ReportError(Exception exception)
+        private void ReportError(Exception exception, ErrorSource errorSource)
         {
-            Errors = exception.ToString();
+            switch (errorSource)
+            {
+                case ErrorSource.Xaml:
+                    Errors.XamlError = exception.ToString();
+                    break;
+
+                case ErrorSource.ViewModel:
+                    Errors.ViewModelError = exception.ToString();
+                    break;
+
+                default:
+                    throw new ArgumentException("errorSource");
+            }
+
             ErrorTabColor = "Red";
             ParsedXaml = null;
         }
@@ -232,7 +228,6 @@ namespace YetAnotherXamlPad
         private bool _useViewModels;
         private TextDocument _xamlCodeDocument;
         private TextDocument _viewModelCodeDocument;
-        private string _errors;
         private string _errorTabColor;
         private IDisposable _editorsChangeSubscription = Disposable.Empty;
 
@@ -307,7 +302,7 @@ namespace YetAnotherXamlPad
                     {
                         _dispatcher.Post(() =>
                             assemblyBuilderOrException.Value.Fold(
-                                _target.ReportError,
+                                exception => _target.ReportError(exception, ErrorSource.ViewModel),
                                 _target.RequestGuiSessionRestart));
                     }
                 }
@@ -316,11 +311,11 @@ namespace YetAnotherXamlPad
             private void BuildAndUseNewAssembly(Either<Exception, ViewModelAssemblyBuilder> assemblyBuilderOrException)
             {
                 assemblyBuilderOrException.Fold(
-                    ReportError,
+                    exception => ReportError(exception, ErrorSource.ViewModel),
                     assemblyBuilder =>
                     {
                         assemblyBuilder.Build().Fold(
-                            ReportError,
+                            exception => ReportError(exception, ErrorSource.ViewModel),
                             assemblyData =>
                             {
                                 GuiRunner.SetViewModelAssembly(assemblyData);
@@ -334,9 +329,9 @@ namespace YetAnotherXamlPad
                 _dispatcher.Post(() => _target.RenderXaml(_xamlCode.Text));
             }
 
-            private void ReportError(Exception exception)
+            private void ReportError(Exception exception, ErrorSource errorSource)
             {
-                _dispatcher.Post(() => _target.ReportError(exception));
+                _dispatcher.Post(() => _target.ReportError(exception, errorSource));
             }
 
             private static bool CanViewModelAssemblyBeLoadedInCurrentAppDomain(
@@ -353,5 +348,7 @@ namespace YetAnotherXamlPad
             private XamlCode _xamlCode;
             private ParsedViewModelCode? _viewModelCode;
         }
+
+        private enum ErrorSource { Xaml, ViewModel }
     }
 }

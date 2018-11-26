@@ -85,6 +85,7 @@
   <ItemGroup>
     <Compile Include="AdHocExtensions.cs" />
     <Compile Include="DataReadyEvent.cs" />
+    <Compile Include="ErrorsViewModel.cs" />
     <Compile Include="Unit.cs" />
     <Compile Include="ViewModelAssemblyBuilder.cs" />
     <Compile Include="DefaultDomain.cs" />
