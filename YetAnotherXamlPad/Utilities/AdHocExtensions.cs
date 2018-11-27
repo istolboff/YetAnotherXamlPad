@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Threading;
 
-namespace YetAnotherXamlPad
+namespace YetAnotherXamlPad.Utilities
 {
     internal static class AdHocExtensions
     {

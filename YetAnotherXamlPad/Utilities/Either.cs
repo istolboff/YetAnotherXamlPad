@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace YetAnotherXamlPad
+namespace YetAnotherXamlPad.Utilities
 {
     [Serializable]
     internal struct Either<TLeft, TRight>

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace YetAnotherXamlPad
+namespace YetAnotherXamlPad.Utilities
 {
     internal static class Make
     {

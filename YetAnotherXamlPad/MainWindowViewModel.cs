@@ -9,7 +9,8 @@ using System.Windows.Threading;
 using System.Xml;
 using JetBrains.Annotations;
 using ICSharpCode.AvalonEdit.Document;
-using static YetAnotherXamlPad.Do;
+using YetAnotherXamlPad.Utilities;
+using static YetAnotherXamlPad.Utilities.Do;
 using static YetAnotherXamlPad.ParsedViewModelCode;
 using static YetAnotherXamlPad.ViewModelAssemblyBuilder;
 

@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using JetBrains.Annotations;
+using YetAnotherXamlPad.Utilities;
 
 namespace YetAnotherXamlPad
 {

@@ -1,6 +1,6 @@
 ﻿using JetBrains.Annotations;
 
-namespace YetAnotherXamlPad
+namespace YetAnotherXamlPad.Utilities
 {
     [UsedImplicitly]
     internal sealed class Unit

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace YetAnotherXamlPad
+namespace YetAnotherXamlPad.Utilities
 {
     internal static class Do
     {

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using static YetAnotherXamlPad.Utilities.Do;
 
 namespace YetAnotherXamlPad
 {
@@ -42,7 +43,7 @@ namespace YetAnotherXamlPad
             ViewModelError = null;
         }
 
-        public event PropertyChangedEventHandler PropertyChanged = Do.Nothing;
+        public event PropertyChangedEventHandler PropertyChanged = Nothing;
 
         private string _xamlError;
         private string _viewModelError;

@@ -1,6 +1,6 @@
 ﻿using System.Threading;
 
-namespace YetAnotherXamlPad
+namespace YetAnotherXamlPad.Utilities
 {
     internal sealed class DataReadyEvent<T> 
     {

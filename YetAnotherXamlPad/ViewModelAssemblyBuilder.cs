@@ -5,7 +5,8 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using JetBrains.Annotations;
-using static YetAnotherXamlPad.Either;
+using YetAnotherXamlPad.Utilities;
+using static YetAnotherXamlPad.Utilities.Either;
 
 namespace YetAnotherXamlPad
 {

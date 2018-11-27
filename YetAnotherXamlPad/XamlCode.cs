@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
-using static YetAnotherXamlPad.Do;
+using YetAnotherXamlPad.Utilities;
+using static YetAnotherXamlPad.Utilities.Do;
 using AssemblyName = System.String;
 
 namespace YetAnotherXamlPad

@@ -83,18 +83,18 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AdHocExtensions.cs" />
-    <Compile Include="DataReadyEvent.cs" />
     <Compile Include="ErrorsViewModel.cs" />
-    <Compile Include="Unit.cs" />
+    <Compile Include="Utilities\AdHocExtensions.cs" />
+    <Compile Include="Utilities\DataReadyEvent.cs" />
+    <Compile Include="Utilities\Do.cs" />
+    <Compile Include="Utilities\Either.cs" />
+    <Compile Include="Utilities\Make.cs" />
+    <Compile Include="Utilities\Unit.cs" />
     <Compile Include="ViewModelAssemblyBuilder.cs" />
     <Compile Include="DefaultDomain.cs" />
-    <Compile Include="Either.cs" />
     <Compile Include="GuiRunner.cs" />
-    <Compile Include="Make.cs" />
     <Compile Include="ParsedViewModelCode.cs" />
     <Compile Include="Startup.cs" />
-    <Compile Include="Do.cs" />
     <Compile Include="XamlCode.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -115,5 +115,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

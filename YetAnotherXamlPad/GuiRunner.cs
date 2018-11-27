@@ -5,11 +5,12 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using ICSharpCode.AvalonEdit.Document;
-using static YetAnotherXamlPad.Do;
-using static YetAnotherXamlPad.Either;
+using YetAnotherXamlPad.Utilities;
+using static YetAnotherXamlPad.Utilities.Do;
+using static YetAnotherXamlPad.Utilities.Either;
 using static YetAnotherXamlPad.ParsedViewModelCode;
 using static YetAnotherXamlPad.ViewModelAssemblyBuilder;
-using BuiltAssemblyOrException = YetAnotherXamlPad.Either<System.Exception, System.Collections.Generic.KeyValuePair<string, byte[]>>;
+using BuiltAssemblyOrException = YetAnotherXamlPad.Utilities.Either<System.Exception, System.Collections.Generic.KeyValuePair<string, byte[]>>;
 
 namespace YetAnotherXamlPad
 {
