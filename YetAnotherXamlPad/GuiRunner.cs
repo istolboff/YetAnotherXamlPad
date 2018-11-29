@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
-using ICSharpCode.AvalonEdit.Document;
 using YetAnotherXamlPad.Utilities;
 using static YetAnotherXamlPad.Utilities.Do;
 using static YetAnotherXamlPad.Utilities.Either;
@@ -16,9 +15,14 @@ namespace YetAnotherXamlPad
 {
     internal static class GuiRunner
     {
-        public static MainWindowViewModel MainWindowViewModel => CreateMainWindowViewModel(GetState());
-
-        public static Exception StartupError => GetState().StartupError;
+        public static (EditorStateDto EditorState, Exception StartupError) StartupInfo
+        {
+            get
+            {
+                var guiRunnerState = GetState();
+                return (guiRunnerState.EditorState, guiRunnerState.StartupError);
+            }
+        }
 
         public static void Setup(AppDomain defaultAppDomain)
         {
@@ -29,11 +33,14 @@ namespace YetAnotherXamlPad
             SetDomainData(
                 defaultAppDomain,
                 new DefaultDomain(CreateApplication()),
-                new GuiRunnerState
+                new GuiRunnerState 
                 {
-                    UseViewModels = false,
-                    XamlCode = DefaultXamlCode,
-                    ViewModelCode = DefaultViewModelCode,
+                    EditorState = new EditorStateDto
+                                    {
+                                        UseViewModel = false,
+                                        XamlCode = DefaultXamlCode,
+                                        ViewModelCode = DefaultViewModelCode
+                                    }
                 });
         }
 
@@ -48,7 +55,7 @@ namespace YetAnotherXamlPad
             guiRunnerState.StartupError = null;
 
             var defaultDomain = GetDefaultDomain();
-            if (guiRunnerState.UseViewModels)
+            if (guiRunnerState.EditorState.UseViewModel)
             {
                 defaultDomain.Application.MainWindow?.Hide();
                 RunDevotedAppDomain(defaultDomain, guiRunnerState);
@@ -58,29 +65,28 @@ namespace YetAnotherXamlPad
                 defaultDomain.RunApplicationIfNotAlreadyRunning();
                 if (defaultDomain.Application.MainWindow != null)
                 {
-                    defaultDomain.Application.MainWindow.DataContext = CreateMainWindowViewModel(guiRunnerState);
+                    Debug.Assert(
+                        (defaultDomain.Application.MainWindow.DataContext as MainWindowViewModel) != null,
+                        "Program logic exception: By this time MainWindow of the drfault appdomain should have DomainContext set up.");
+                    ((MainWindowViewModel)defaultDomain.Application.MainWindow.DataContext).Reload(guiRunnerState.EditorState);
                     defaultDomain.Application.MainWindow.Show();
                 }
             }
         }
 
         public static void RequestGuiSessionRestart(
-            bool useViewModels,
-            string xamlCode,
-            string viewModelCode,
+            EditorStateDto editorState,
             ViewModelAssemblyBuilder assemblyBuilder = null)
         {
             var guiRunnerState = GetState();
 
-            guiRunnerState.UseViewModels = useViewModels;
-            guiRunnerState.XamlCode = xamlCode;
-            guiRunnerState.ViewModelCode = viewModelCode;
+            guiRunnerState.EditorState = editorState;
             guiRunnerState.FinishApplicationNow = false;
             guiRunnerState.ViewModelAssembly = null;
 
-            if (useViewModels)
+            if (editorState.UseViewModel)
             {
-                BuildViewModelAssemblyInBackground(xamlCode, viewModelCode, assemblyBuilder, guiRunnerState);
+                BuildViewModelAssemblyInBackground(editorState.XamlCode, editorState.ViewModelCode, assemblyBuilder, guiRunnerState);
             }
 
             if (!AppDomain.CurrentDomain.IsDefaultAppDomain())
@@ -193,15 +199,6 @@ namespace YetAnotherXamlPad
             };
         }
 
-        private static MainWindowViewModel CreateMainWindowViewModel(GuiRunnerState guiRunnerState)
-        {
-            return new MainWindowViewModel(guiRunnerState.UseViewModels)
-            {
-                XamlCodeDocument = new TextDocument(guiRunnerState.XamlCode),
-                ViewModelCodeDocument = new TextDocument(guiRunnerState.ViewModelCode)
-            };
-        }
-
         private static void SetDomainData(AppDomain appDomain, DefaultDomain defaultDomain, GuiRunnerState guiRunnerState)
         {
             appDomain.SetData(DefaultDomainDataName, defaultDomain);
@@ -242,11 +239,7 @@ namespace YetAnotherXamlPad
 
         private class GuiRunnerState : MarshalByRefObject
         {
-            public bool UseViewModels { get; set; }
-
-            public string XamlCode { get; set; }
-
-            public string ViewModelCode { get; set; }
+            public EditorStateDto EditorState { get; set; }
 
             public Exception StartupError { get; set; }
 

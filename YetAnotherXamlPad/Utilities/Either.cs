@@ -64,13 +64,13 @@ namespace YetAnotherXamlPad.Utilities
         public static Either<TLeft, TResult>? FlatMap<TLeft, TRight, TResult>(
             this Either<TLeft, TRight>? @this,
             Func<TRight, Either<TLeft, TResult>> getFromRight) => 
-            @this?.Fold(left => Left<TLeft, TResult>(left), getFromRight);
+            @this?.Fold(Left<TLeft, TResult>, getFromRight);
 
         public static TRight GetOrElse<TLeft, TRight>(this Either<TLeft, TRight> @this, TRight or = default) =>
             @this.Fold(_ => or, right => right);
     }
 
-    internal struct EitherLeftFactory<TLeft>
+    internal readonly struct EitherLeftFactory<TLeft>
     {
         public EitherLeftFactory(TLeft left)
             : this()
@@ -78,10 +78,10 @@ namespace YetAnotherXamlPad.Utilities
             Left = left;
         }
 
-        public TLeft Left { get; }
+        public readonly TLeft Left;
     }
 
-    internal struct EitherRightFactory<TRight>
+    internal readonly struct EitherRightFactory<TRight>
     {
         public EitherRightFactory(TRight right)
             : this()
@@ -89,6 +89,6 @@ namespace YetAnotherXamlPad.Utilities
             Right = right;
         }
 
-        public TRight Right { get; }
+        public readonly TRight Right;
     }
 }

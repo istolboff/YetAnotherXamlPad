@@ -7,7 +7,6 @@
         xmlns:local="clr-namespace:YetAnotherXamlPad"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=local:MainWindowViewModel, IsDesignTimeCreatable=False}"
-        DataContext="{x:Static local:GuiRunner.MainWindowViewModel}"
         Title="{Binding Title}">
   <Grid>
     <Grid.RowDefinitions>
@@ -18,37 +17,63 @@
     <Frame NavigationUIVisibility="Hidden" Content="{Binding ParsedXaml}"/>
     <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" />
     <TabControl Grid.Row="2">
-      <TabItem Header="XAML">
-        <avalonedit:TextEditor
-          SyntaxHighlighting="XML"
-          FontSize="16"
-          ShowLineNumbers="True"
-          Document="{Binding XamlCodeDocument, UpdateSourceTrigger=PropertyChanged}"/>
+      <TabItem>
+        <TabItem.Header>
+          <TextBlock 
+            Text="XAML" 
+            Background="{Binding Errors.XamlErrors.Count, Converter={local:TabHeaderColorConverter}}"/>
+        </TabItem.Header>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <avalonedit:TextEditor
+            x:Name="XamlEditor"
+            SyntaxHighlighting="XML"
+            FontSize="16"
+            ShowLineNumbers="True"/>
+          <ListBox
+            Grid.Row="1"
+            MaxHeight="300"
+            ItemsSource="{Binding Errors.XamlErrors}"
+            SelectedItem="{Binding Errors.SelectedXamlError}"
+            Visibility="{Binding Errors.XamlErrors.Count, Converter={local:ErrorListVisibilityConverter}}"/>
+        </Grid>
       </TabItem>
       <TabItem>
         <TabItem.Header>
-          <StackPanel Orientation="Horizontal">
+          <StackPanel 
+            Orientation="Horizontal" 
+            Background="{Binding Errors.ViewModelErrors.Count, Converter={local:TabHeaderColorConverter}}">
             <TextBlock Text="ViewModels" Margin="0,0,5,0" VerticalAlignment="Center"/>
             <CheckBox IsChecked="{Binding UseViewModels}" VerticalAlignment="Center"/>
           </StackPanel>
         </TabItem.Header>
-        <avalonedit:TextEditor
-          SyntaxHighlighting="C#"
-          FontSize="16"
-          ShowLineNumbers="True"
-          IsEnabled="{Binding UseViewModels}"
-          Document="{Binding ViewModelCodeDocument, UpdateSourceTrigger=PropertyChanged}"/>
-      </TabItem>
-      <TabItem>
-        <TabItem.Header>
-            <TextBlock Text="Errors" Background="{Binding ErrorTabColor}"/>
-        </TabItem.Header>
-        <TabItem.Content>
-          <UniformGrid Columns="2" Rows="1" DataContext="{Binding Errors}">
-            <TextBlock Text="{Binding XamlError}"/>
-            <TextBlock Text="{Binding ViewModelError}"/>
-          </UniformGrid>
-        </TabItem.Content>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <avalonedit:TextEditor
+            x:Name="ViewModelEditor"
+            SyntaxHighlighting="C#"
+            FontSize="16"
+            ShowLineNumbers="True"
+            IsEnabled="{Binding UseViewModels}"/>
+          <ListBox 
+            Grid.Row="1" 
+            MaxHeight="300" 
+            ItemsSource="{Binding Errors.ViewModelErrors}"
+            SelectedItem="{Binding Errors.SelectedViewModelError}"
+            Visibility="{Binding Errors.ViewModelErrors.Count, Converter={local:ErrorListVisibilityConverter}}"/>
+        </Grid>
       </TabItem>
     </TabControl>
   </Grid>

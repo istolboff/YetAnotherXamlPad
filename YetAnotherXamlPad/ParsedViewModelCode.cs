@@ -8,7 +8,7 @@ using YetAnotherXamlPad.Utilities;
 
 namespace YetAnotherXamlPad
 {
-    internal struct ParsedViewModelCode
+    internal readonly struct ParsedViewModelCode
     {
         private ParsedViewModelCode([NotNull] SyntaxTree syntaxTree)
         {

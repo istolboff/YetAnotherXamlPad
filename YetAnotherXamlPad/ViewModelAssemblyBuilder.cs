@@ -33,7 +33,7 @@ namespace YetAnotherXamlPad
                 var emitResult = compilation.Emit(memoryStream);
                 return emitResult.Success
                     ? Right<Exception, KeyValuePair<string, byte[]>>(Make.Pair(AssemblyName, memoryStream.ToArray()))
-                    : Left((Exception)new InvalidOperationException(string.Join(Environment.NewLine, emitResult.Diagnostics)));
+                    : Left((Exception)new AssemblyBuildException(emitResult.Diagnostics));
             }
         }
 

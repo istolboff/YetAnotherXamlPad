@@ -16,5 +16,31 @@ namespace YetAnotherXamlPad.Utilities
         {
             return (@this as IReadOnlyCollection<T>) ?? @this.ToArray();
         }
+
+        public static void ReplaceAllWithRange<T>(this ICollection<T> @this, IEnumerable<T> range)
+        {
+            @this.Clear();
+            @this.AddRange(range);
+        }
+
+        private static void AddRange<T>(this ICollection<T> @this, IEnumerable<T> range)
+        { 
+            if (range == null)
+            {
+                return;
+            }
+
+            if (@this is List<T> list)
+            {
+                list.AddRange(range);
+            }
+            else
+            {
+                foreach (var value in range)
+                {
+                    @this.Add(value);
+                }
+            }
+        }
     }
 }

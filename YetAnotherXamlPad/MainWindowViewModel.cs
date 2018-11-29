@@ -4,12 +4,11 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Reactive.Disposables;
 using System.Windows;
-using System.Windows.Markup;
 using System.Windows.Threading;
 using System.Xml;
 using JetBrains.Annotations;
-using ICSharpCode.AvalonEdit.Document;
 using YetAnotherXamlPad.Utilities;
+using static System.Windows.Markup.XamlReader;
 using static YetAnotherXamlPad.Utilities.Do;
 using static YetAnotherXamlPad.ParsedViewModelCode;
 using static YetAnotherXamlPad.ViewModelAssemblyBuilder;
@@ -18,16 +17,32 @@ namespace YetAnotherXamlPad
 {
     internal sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     {
-        public MainWindowViewModel(bool useViewModels)
+        public MainWindowViewModel(
+            [NotNull] CodeEditor xamlCodeEditor,
+            [NotNull] CodeEditor viewModelCodeEditor)
         {
-            _useViewModels = useViewModels;
+            _xamlCodeEditor = xamlCodeEditor;
+            _viewModelCodeEditor = viewModelCodeEditor;
 
-            Errors = new ErrorsViewModel();
+            Errors = new ErrorsViewModel(
+                xamlTextMarkerService: xamlCodeEditor.TextMarkerService,
+                viewModelTextMarkerService: viewModelCodeEditor.TextMarkerService);
 
-            if (GuiRunner.StartupError != null)
+            var (editorState, startupError) = GuiRunner.StartupInfo;
+            _useViewModels = editorState.UseViewModel;
+            _xamlCodeEditor.Text = editorState.XamlCode;
+            _viewModelCodeEditor.Text = editorState.ViewModelCode;
+
+            if (startupError == null)
             {
-                ReportError(GuiRunner.StartupError, ErrorSource.ViewModel);
+                RenderXaml(editorState.XamlCode);
             }
+            else
+            {
+                ReportError(startupError, ErrorSource.ViewModel);
+            }
+
+            _editorsChangeSubscription = ResubscribeToEditorsChanges();
         }
 
         public string Title => AppDomain.CurrentDomain.FriendlyName;
@@ -47,23 +62,6 @@ namespace YetAnotherXamlPad
             }
         }
 
-        public TextDocument XamlCodeDocument
-        {
-            get => _xamlCodeDocument;
-            set
-            {
-                if (ReferenceEquals(_xamlCodeDocument, value))
-                {
-                    return;
-                }
-
-                _xamlCodeDocument = value;
-                ResubscribeToEditorsChanges();
-
-                PropertyChanged(this, new PropertyChangedEventArgs(nameof(XamlCodeDocument)));
-            }
-        }
-
         public bool UseViewModels
         {
             get => _useViewModels;
@@ -80,38 +78,14 @@ namespace YetAnotherXamlPad
             }
         }
 
-        public TextDocument ViewModelCodeDocument
-        {
-            get => _viewModelCodeDocument;
-            set
-            {
-                if (ReferenceEquals(_viewModelCodeDocument, value))
-                {
-                    return;
-                }
-
-                _viewModelCodeDocument = value;
-                ResubscribeToEditorsChanges();
-
-                PropertyChanged(this, new PropertyChangedEventArgs(nameof(ViewModelCodeDocument)));
-            }
-        }
-
         public ErrorsViewModel Errors { get; }
 
-        public string ErrorTabColor
+        public void Reload(EditorStateDto editorState)
         {
-            get => _errorTabColor;
-            set
-            {
-                if (_errorTabColor == value)
-                {
-                    return;
-                }
-
-                _errorTabColor = value;
-                PropertyChanged(this, new PropertyChangedEventArgs(nameof(ErrorTabColor)));
-            }
+            _useViewModels = editorState.UseViewModel;
+            _xamlCodeEditor.Text = editorState.XamlCode;
+            _viewModelCodeEditor.Text = editorState.ViewModelCode;
+            PropertyChanged(this, new PropertyChangedEventArgs(null));
         }
 
         public void Dispose()
@@ -121,49 +95,46 @@ namespace YetAnotherXamlPad
 
         public event PropertyChangedEventHandler PropertyChanged = Nothing;
 
-        private void ResubscribeToEditorsChanges()
-        {
-            _editorsChangeSubscription.Dispose();
-
-            if (_xamlCodeDocument == null || _viewModelCodeDocument == null)
+        private EditorStateDto CurrentState => 
+            new EditorStateDto
             {
-                return;
-            }
+                UseViewModel = _useViewModels,
+                XamlCode = _xamlCodeEditor.Text,
+                ViewModelCode = _viewModelCodeEditor.Text
+            };
 
-            var xamlCodeChanges = CreateTextChangeObservable(_xamlCodeDocument);
+        private IDisposable ResubscribeToEditorsChanges()
+        {
+            var xamlCodeChanges = _xamlCodeEditor.CreateTextChangeObservable();
 
             var dispatcher = Dispatcher.CurrentDispatcher;
 
             if (!UseViewModels)
             {
-                _editorsChangeSubscription = xamlCodeChanges
+                return xamlCodeChanges
                     .Throttle(XamlChangeThrottlingInterval)
                     .Subscribe(xamlCode => dispatcher.Post(() => RenderXaml(xamlCode)));
             }
-            else
-            {
-                var viewModelCodeChanges = CreateTextChangeObservable(_viewModelCodeDocument);
 
-                var rawXamlChanges = xamlCodeChanges
-                    .Throttle(XamlChangeThrottlingInterval)
-                    .Select(xamlCode => new XamlCode(xamlCode));
+            var viewModelCodeChanges = _viewModelCodeEditor.CreateTextChangeObservable();
 
-                var rawViewModelChanges = viewModelCodeChanges
-                    .Throttle(CsharpChangeThrottlingInterval)
-                    .Select(TryParseViewModelCode);
+            var rawXamlChanges = xamlCodeChanges
+                .Throttle(XamlChangeThrottlingInterval)
+                .Select(xamlCode => new XamlCode(xamlCode));
 
-                var codeChangesListener = new CodeChangesListener(
-                    xamlCode: new XamlCode(_xamlCodeDocument.Text), 
-                    viewModelCode: _viewModelCodeDocument.Text, 
-                    target: this, 
-                    dispatcher: dispatcher);
+            var rawViewModelChanges = viewModelCodeChanges
+                .Throttle(CsharpChangeThrottlingInterval)
+                .Select(TryParseViewModelCode);
 
-                _editorsChangeSubscription = new CompositeDisposable(
-                    rawXamlChanges.Subscribe(xamlCode => codeChangesListener.XamlChanged(xamlCode)),
-                    rawViewModelChanges.Subscribe(viewModelChange => codeChangesListener.ViewModelChanged(viewModelChange)));
-            }
+            var codeChangesListener = new CodeChangesListener(
+                xamlCode: new XamlCode(_xamlCodeEditor.Text), 
+                viewModelCode: _viewModelCodeEditor.Text, 
+                target: this, 
+                dispatcher: dispatcher);
 
-            RenderXaml(_xamlCodeDocument.Text);
+            return new CompositeDisposable(
+                rawXamlChanges.Subscribe(xamlCode => codeChangesListener.XamlChanged(xamlCode)),
+                rawViewModelChanges.Subscribe(viewModelChange => codeChangesListener.ViewModelChanged(viewModelChange)));
         }
 
         private void RenderXaml(string xamlCode)
@@ -173,27 +144,17 @@ namespace YetAnotherXamlPad
                 using (var stringReader = new StringReader(xamlCode))
                 using (var xmlreader = new XmlTextReader(stringReader))
                 {
-                    ParsedXaml = XamlReader.Load(xmlreader) as FrameworkElement;
+                    ParsedXaml = Load(xmlreader) as FrameworkElement;
                 }
 
-                ClearError();
+                Errors.ClearErrors(); 
             })
             .Catch(exception => ReportError(exception, ErrorSource.Xaml));
         }
 
         private void RequestGuiSessionRestart(ViewModelAssemblyBuilder assemblyBuilder = null)
         {
-            GuiRunner.RequestGuiSessionRestart(
-                useViewModels: _useViewModels, 
-                xamlCode: _xamlCodeDocument.Text, 
-                viewModelCode: _viewModelCodeDocument.Text,
-                assemblyBuilder: assemblyBuilder);
-        }
-
-        private void ClearError()
-        {
-            Errors.ClearErrors();
-            ErrorTabColor = null;
+            GuiRunner.RequestGuiSessionRestart(CurrentState, assemblyBuilder);
         }
 
         private void ReportError(Exception exception, ErrorSource errorSource)
@@ -201,36 +162,26 @@ namespace YetAnotherXamlPad
             switch (errorSource)
             {
                 case ErrorSource.Xaml:
-                    Errors.XamlError = exception.ToString();
+                    Errors.ReportXamlError(exception);
                     break;
 
                 case ErrorSource.ViewModel:
-                    Errors.ViewModelError = exception.ToString();
+                    Errors.ReportViewModelErrors(exception);
                     break;
 
                 default:
                     throw new ArgumentException("errorSource");
             }
 
-            ErrorTabColor = "Red";
             ParsedXaml = null;
         }
 
-        private static IObservable<string> CreateTextChangeObservable([NotNull] TextDocument textDocument)
-        {
-            return Observable
-                    .FromEventPattern(
-                        h => textDocument.TextChanged += h,
-                        h => textDocument.TextChanged -= h)
-                    .Select(_ => textDocument.Text);
-        }
+        private readonly CodeEditor _xamlCodeEditor;
+        private readonly CodeEditor _viewModelCodeEditor;
+        private readonly IDisposable _editorsChangeSubscription;
 
-        private FrameworkElement _parsedXaml;
         private bool _useViewModels;
-        private TextDocument _xamlCodeDocument;
-        private TextDocument _viewModelCodeDocument;
-        private string _errorTabColor;
-        private IDisposable _editorsChangeSubscription = Disposable.Empty;
+        private FrameworkElement _parsedXaml;
 
         private static readonly TimeSpan XamlChangeThrottlingInterval = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan CsharpChangeThrottlingInterval = TimeSpan.FromMilliseconds(1500);

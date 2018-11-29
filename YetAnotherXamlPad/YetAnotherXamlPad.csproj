@@ -83,7 +83,13 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EditorStateDto.cs" />
+    <Compile Include="CodeEditor.cs" />
+    <Compile Include="WpfConverter.cs" />
     <Compile Include="ErrorsViewModel.cs" />
+    <Compile Include="TextMarking\ErrorTextMarkerService.cs" />
+    <Compile Include="TextMarking\ErrorTextMarking.cs" />
+    <Compile Include="SourceCodeError.cs" />
     <Compile Include="Utilities\AdHocExtensions.cs" />
     <Compile Include="Utilities\DataReadyEvent.cs" />
     <Compile Include="Utilities\Do.cs" />
@@ -95,6 +101,7 @@
     <Compile Include="GuiRunner.cs" />
     <Compile Include="ParsedViewModelCode.cs" />
     <Compile Include="Startup.cs" />
+    <Compile Include="AssemblyBuildException.cs" />
     <Compile Include="XamlCode.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>

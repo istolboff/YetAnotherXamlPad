@@ -8,7 +8,7 @@ using AssemblyName = System.String;
 
 namespace YetAnotherXamlPad
 {
-    internal struct XamlCode
+    internal readonly struct XamlCode
     {
         public XamlCode(string text)
         {
