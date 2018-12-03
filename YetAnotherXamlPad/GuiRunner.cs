@@ -42,6 +42,8 @@ namespace YetAnotherXamlPad
                                         ViewModelCode = DefaultViewModelCode
                                     }
                 });
+
+            Task.Run(WarmUp);
         }
 
         public static void RunGuiSession()
@@ -125,6 +127,7 @@ namespace YetAnotherXamlPad
 
         private static void RunGuiInsideDevotedDomain()
         {
+            Task.Run(WarmUp);
             var guiRunnerState = GetState();
 
             guiRunnerState.StartupError = null;

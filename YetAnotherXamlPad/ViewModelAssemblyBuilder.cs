@@ -27,7 +27,6 @@ namespace YetAnotherXamlPad
                 syntaxTrees: new[] { _syntaxTree },
                 references: new[] { MscorLib },
                 options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-
             using (var memoryStream = new MemoryStream())
             {
                 var emitResult = compilation.Emit(memoryStream);
@@ -45,6 +44,18 @@ namespace YetAnotherXamlPad
                 ? default 
                 : TryGetViewModelAssemblyName(xamlCode, viewModelCode.Value)
                     .Map(assemblyName => new ViewModelAssemblyBuilder(assemblyName, viewModelCode.Value.SyntaxTree));
+        }
+
+        public static void WarmUp()
+        {
+            var parsedCode = ParsedViewModelCode.TryParseViewModelCode(WarmUpCsharpCode);
+            if (parsedCode != null)
+            {
+                new ViewModelAssemblyBuilder(
+                    "__" + Guid.NewGuid().ToString("N"),
+                    parsedCode.Value.SyntaxTree)
+                .Build();
+            }
         }
 
         private static Either<Exception, string>? TryGetViewModelAssemblyName(
@@ -77,5 +88,18 @@ namespace YetAnotherXamlPad
         private readonly SyntaxTree _syntaxTree;
 
         private static readonly MetadataReference MscorLib = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
+        private const string WarmUpCsharpCode =
+@"namespace ViewModels
+{
+    public class ViewModel
+    {
+        public static string Greetings = ""Hello, World!"";
+
+        public void Method() 
+        {
+            Console.WriteLine(Greetings);
+        }
+    }
+}";
     }
 }
