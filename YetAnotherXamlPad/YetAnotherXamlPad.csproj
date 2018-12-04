@@ -83,8 +83,10 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BindingErrorsReporting.cs" />
     <Compile Include="EditorStateDto.cs" />
     <Compile Include="CodeEditor.cs" />
+    <Compile Include="WpfBindingException.cs" />
     <Compile Include="WpfConverter.cs" />
     <Compile Include="ErrorsViewModel.cs" />
     <Compile Include="TextMarking\ErrorTextMarkerService.cs" />

@@ -19,9 +19,12 @@
     <TabControl Grid.Row="2">
       <TabItem>
         <TabItem.Header>
-          <TextBlock 
-            Text="XAML" 
-            Background="{Binding Errors.XamlErrors.Count, Converter={local:TabHeaderColorConverter}}"/>
+          <StackPanel 
+            Orientation="Horizontal" 
+            Background="{Binding Errors.XamlErrors.Count, Converter={local:TabHeaderColorConverter}}">
+            <TextBlock Text="XAML" Margin="0,0,5,0" VerticalAlignment="Center"/>
+            <CheckBox IsChecked="{Binding ReportBindingErrors}" VerticalAlignment="Center" ToolTip="Report binding errors"/>
+          </StackPanel>
         </TabItem.Header>
         <Grid>
           <Grid.ColumnDefinitions>
@@ -50,7 +53,7 @@
             Orientation="Horizontal" 
             Background="{Binding Errors.ViewModelErrors.Count, Converter={local:TabHeaderColorConverter}}">
             <TextBlock Text="ViewModels" Margin="0,0,5,0" VerticalAlignment="Center"/>
-            <CheckBox IsChecked="{Binding UseViewModels}" VerticalAlignment="Center"/>
+            <CheckBox IsChecked="{Binding UseViewModels}" VerticalAlignment="Center" ToolTip="Enable using View Model code"/>
           </StackPanel>
         </TabItem.Header>
         <Grid>

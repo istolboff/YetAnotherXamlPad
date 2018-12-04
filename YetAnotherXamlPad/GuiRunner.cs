@@ -39,10 +39,12 @@ namespace YetAnotherXamlPad
                                     {
                                         UseViewModel = false,
                                         XamlCode = DefaultXamlCode,
-                                        ViewModelCode = DefaultViewModelCode
+                                        ViewModelCode = DefaultViewModelCode,
+                                        ReportBindingErrors = true
                                     }
                 });
 
+            BindingErrorsReporting.Setup();
             Task.Run(WarmUp);
         }
 
@@ -127,6 +129,7 @@ namespace YetAnotherXamlPad
 
         private static void RunGuiInsideDevotedDomain()
         {
+            BindingErrorsReporting.Setup();
             Task.Run(WarmUp);
             var guiRunnerState = GetState();
 

@@ -27,14 +27,14 @@ namespace YetAnotherXamlPad.TextMarking
         public SourceCodeError GetSourceCodeError(XamlException exception)
         {
             return new SourceCodeError(
-                exception.Message, 
+                GetExceptionMessage(exception),
                 TryGetSingleLineLocation(lineNumber: exception.LineNumber - 1, positionInLine: exception.LinePosition - 1, text: Document.Text));
         }
 
         public SourceCodeError GetSourceCodeError(System.Windows.Markup.XamlParseException exception)
         {
             return new SourceCodeError(
-                exception.Message, 
+                GetExceptionMessage(exception), 
                 TryGetSingleLineLocation(lineNumber: exception.LineNumber - 1, positionInLine: exception.LinePosition - 1, text: Document.Text));
         }
 
@@ -183,14 +183,6 @@ namespace YetAnotherXamlPad.TextMarking
             }
         }
 
-        private static LinePositionSpan? TryGetSingleLineLocation(int lineNumber, int positionInLine, string text)
-        {
-            var lines = text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            return lines.Length <= lineNumber
-                ? default(LinePositionSpan?)
-                : new LinePositionSpan(new LinePosition(lineNumber, positionInLine), new LinePosition(lineNumber, lines[lineNumber].Length));
-        }
-
         private (int startOffset, int length) ConvertToStartOffsetAndLength(LinePositionSpan @this)
         {
             var startOffset = GetOffset(@this.Start);
@@ -212,6 +204,19 @@ namespace YetAnotherXamlPad.TextMarking
             }
 
             return result + linePosition.Character;
+        }
+
+        private string GetExceptionMessage(Exception exception)
+        {
+            return exception.InnerException is WpfBindingException bindingException ? bindingException.Message : exception.Message;
+        }
+
+        private static LinePositionSpan? TryGetSingleLineLocation(int lineNumber, int positionInLine, string text)
+        {
+            var lines = text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            return lines.Length <= lineNumber
+                ? default(LinePositionSpan?)
+                : new LinePositionSpan(new LinePosition(lineNumber, positionInLine), new LinePosition(lineNumber, lines[lineNumber].Length));
         }
 
         private readonly TextSegmentCollection<TextMarker> _markers;

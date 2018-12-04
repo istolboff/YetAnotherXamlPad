@@ -8,3 +8,5 @@
 	https://github.com/siegfriedpammer/AvalonEditSamples
 * Adding error text tooltip to AvalonEdit 
 	http://programmerz.ru/questions/83471/showing-invalid-xml-syntax-with-avalonedit-question.html
+* Report WPF Binding errors
+	http://tech.pro/tutorial/940/wpf-snippet-detecting-binding-errors

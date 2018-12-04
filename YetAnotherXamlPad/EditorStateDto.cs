@@ -10,5 +10,7 @@ namespace YetAnotherXamlPad
         public string XamlCode { get; set; }
 
         public string ViewModelCode { get; set; }
+
+        public bool ReportBindingErrors { get; set; }
     }
 }

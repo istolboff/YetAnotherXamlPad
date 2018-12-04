@@ -32,6 +32,7 @@ namespace YetAnotherXamlPad
             _useViewModels = editorState.UseViewModel;
             _xamlCodeEditor.Text = editorState.XamlCode;
             _viewModelCodeEditor.Text = editorState.ViewModelCode;
+            ReportBindingErrors = editorState.ReportBindingErrors;
 
             if (startupError == null)
             {
@@ -78,6 +79,23 @@ namespace YetAnotherXamlPad
             }
         }
 
+        public bool ReportBindingErrors
+        {
+            get => _reportBindingErrors;
+            set
+            {
+                if (_reportBindingErrors == value)
+                {
+                    return;
+                }
+
+                _reportBindingErrors = value;
+                BindingErrorsReporting.Toggle(_reportBindingErrors);
+                PropertyChanged(this, new PropertyChangedEventArgs(nameof(ReportBindingErrors)));
+                RenderXaml(_xamlCodeEditor.Text);
+            }
+        }
+
         public ErrorsViewModel Errors { get; }
 
         public void Reload(EditorStateDto editorState)
@@ -85,6 +103,7 @@ namespace YetAnotherXamlPad
             _useViewModels = editorState.UseViewModel;
             _xamlCodeEditor.Text = editorState.XamlCode;
             _viewModelCodeEditor.Text = editorState.ViewModelCode;
+            _reportBindingErrors = editorState.ReportBindingErrors;
             PropertyChanged(this, new PropertyChangedEventArgs(null));
         }
 
@@ -100,7 +119,8 @@ namespace YetAnotherXamlPad
             {
                 UseViewModel = _useViewModels,
                 XamlCode = _xamlCodeEditor.Text,
-                ViewModelCode = _viewModelCodeEditor.Text
+                ViewModelCode = _viewModelCodeEditor.Text,
+                ReportBindingErrors = _reportBindingErrors
             };
 
         private IDisposable ResubscribeToEditorsChanges()
@@ -181,6 +201,7 @@ namespace YetAnotherXamlPad
         private readonly IDisposable _editorsChangeSubscription;
 
         private bool _useViewModels;
+        private bool _reportBindingErrors;
         private FrameworkElement _parsedXaml;
 
         private static readonly TimeSpan XamlChangeThrottlingInterval = TimeSpan.FromMilliseconds(500);
