@@ -39,7 +39,10 @@ namespace YetAnotherXamlPad
 
                 _selectedXamlError = value;
                 PropertyChanged(this, new PropertyChangedEventArgs(nameof(SelectedXamlError)));
-                SetCaretToErrorStart(_xamlTextMarkerService, value.Location);
+                if (value?.Location != null)
+                {
+                    SetCaretToErrorStart(_xamlTextMarkerService, value.Location);
+                }
             }
         }
 

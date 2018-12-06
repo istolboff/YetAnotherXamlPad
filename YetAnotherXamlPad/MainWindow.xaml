@@ -42,6 +42,7 @@
           <ListBox
             Grid.Row="1"
             MaxHeight="300"
+            Background="#FFFFE1"
             ItemsSource="{Binding Errors.XamlErrors}"
             SelectedItem="{Binding Errors.SelectedXamlError}"
             Visibility="{Binding Errors.XamlErrors.Count, Converter={local:ErrorListVisibilityConverter}}"/>
@@ -53,7 +54,59 @@
             Orientation="Horizontal" 
             Background="{Binding Errors.ViewModelErrors.Count, Converter={local:TabHeaderColorConverter}}">
             <TextBlock Text="ViewModels" Margin="0,0,5,0" VerticalAlignment="Center"/>
-            <CheckBox IsChecked="{Binding UseViewModels}" VerticalAlignment="Center" ToolTip="Enable using View Model code"/>
+            <CheckBox x:Name="UseViewModelsCheckBox" IsChecked="{Binding UseViewModels}" VerticalAlignment="Center" ToolTip="Enable using View Model code"/>
+            <ToggleButton
+              x:Name="ApplyViewModelChangesImmediately"
+              IsEnabled="{Binding IsChecked, ElementName=UseViewModelsCheckBox}"
+              IsChecked="{Binding ApplyViewModelChangesImmediately}"
+              Margin="5,0,5,0"
+              ToolTip="Do/Do not rebuild ViewModel assembly as the user types in the C# Code Editor"
+              VerticalAlignment="Center">
+              <Image>
+                <Image.Style>
+                  <Style TargetType="{x:Type Image}">
+                    <Style.Triggers>
+                      <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                          <Condition Binding="{Binding IsEnabled, ElementName=ApplyViewModelChangesImmediately}" Value="False" />
+                          <Condition Binding="{Binding IsChecked, ElementName=ApplyViewModelChangesImmediately}" Value="True" />
+                        </MultiDataTrigger.Conditions>
+                        <MultiDataTrigger.Setters>
+                          <Setter Property="Source" Value="/YetAnotherXamlPad;component/Resources/Pause-Disabled-icon.png" />
+                        </MultiDataTrigger.Setters>
+                      </MultiDataTrigger>
+                      <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                          <Condition Binding="{Binding IsEnabled, ElementName=ApplyViewModelChangesImmediately}" Value="False" />
+                          <Condition Binding="{Binding IsChecked, ElementName=ApplyViewModelChangesImmediately}" Value="False" />
+                        </MultiDataTrigger.Conditions>
+                        <MultiDataTrigger.Setters>
+                          <Setter Property="Source" Value="/YetAnotherXamlPad;component/Resources/Play-Disabled-icon.png" />
+                        </MultiDataTrigger.Setters>
+                      </MultiDataTrigger>
+                      <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                          <Condition Binding="{Binding IsEnabled, ElementName=ApplyViewModelChangesImmediately}" Value="True" />
+                          <Condition Binding="{Binding IsChecked, ElementName=ApplyViewModelChangesImmediately}" Value="True" />
+                        </MultiDataTrigger.Conditions>
+                        <MultiDataTrigger.Setters>
+                          <Setter Property="Source" Value="/YetAnotherXamlPad;component/Resources/pause-icon.png" />
+                        </MultiDataTrigger.Setters>
+                      </MultiDataTrigger>
+                      <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                          <Condition Binding="{Binding IsEnabled, ElementName=ApplyViewModelChangesImmediately}" Value="True" />
+                          <Condition Binding="{Binding IsChecked, ElementName=ApplyViewModelChangesImmediately}" Value="False" />
+                        </MultiDataTrigger.Conditions>
+                        <MultiDataTrigger.Setters>
+                          <Setter Property="Source" Value="/YetAnotherXamlPad;component/Resources/Button-Play-icon.png" />
+                        </MultiDataTrigger.Setters>
+                      </MultiDataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Image.Style>
+              </Image>
+            </ToggleButton>
           </StackPanel>
         </TabItem.Header>
         <Grid>
@@ -73,6 +126,7 @@
           <ListBox 
             Grid.Row="1" 
             MaxHeight="300" 
+            Background="#FFFFE1"
             ItemsSource="{Binding Errors.ViewModelErrors}"
             SelectedItem="{Binding Errors.SelectedViewModelError}"
             Visibility="{Binding Errors.ViewModelErrors.Count, Converter={local:ErrorListVisibilityConverter}}"/>

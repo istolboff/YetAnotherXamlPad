@@ -40,11 +40,11 @@ namespace YetAnotherXamlPad
                                         UseViewModel = false,
                                         XamlCode = DefaultXamlCode,
                                         ViewModelCode = DefaultViewModelCode,
-                                        ReportBindingErrors = true
+                                        ReportBindingErrors = true,
+                                        ApplyViewModelChangesImmediately = true
                                     }
                 });
 
-            BindingErrorsReporting.Setup();
             Task.Run(WarmUp);
         }
 
@@ -118,7 +118,7 @@ namespace YetAnotherXamlPad
 
         private static void RunDevotedAppDomain(DefaultDomain defaultDomain, GuiRunnerState guiRunnerState)
         {
-            var devotedAppDomain = AppDomain.CreateDomain("Devoted Domain");
+            var devotedAppDomain = AppDomain.CreateDomain(Guid.NewGuid().ToString());
             SetDomainData(devotedAppDomain, defaultDomain, guiRunnerState);
             devotedAppDomain.DoCallBack(RunGuiInsideDevotedDomain);
             if (guiRunnerState.FinishApplicationNow)
@@ -129,7 +129,6 @@ namespace YetAnotherXamlPad
 
         private static void RunGuiInsideDevotedDomain()
         {
-            BindingErrorsReporting.Setup();
             Task.Run(WarmUp);
             var guiRunnerState = GetState();
 
@@ -197,12 +196,14 @@ namespace YetAnotherXamlPad
 
         private static Application CreateApplication()
         {
-            return new Application
+            var result = new Application
             {
                 StartupUri = new Uri(
                     $"pack://application:,,,/{Assembly.GetExecutingAssembly().GetName().Name};component/MainWindow.xaml", 
                     UriKind.Absolute)
             };
+            result.Startup += (_, __) => BindingErrorsReporting.Setup();
+            return result;
         }
 
         private static void SetDomainData(AppDomain appDomain, DefaultDomain defaultDomain, GuiRunnerState guiRunnerState)

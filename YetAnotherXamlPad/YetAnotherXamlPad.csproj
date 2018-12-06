@@ -127,5 +127,11 @@
   <ItemGroup>
     <None Include="Readme.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\Button-Play-icon.png" />
+    <Resource Include="Resources\Pause-Disabled-icon.png" />
+    <Resource Include="Resources\pause-icon.png" />
+    <Resource Include="Resources\Play-Disabled-icon.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

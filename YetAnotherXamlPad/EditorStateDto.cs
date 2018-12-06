@@ -12,5 +12,7 @@ namespace YetAnotherXamlPad
         public string ViewModelCode { get; set; }
 
         public bool ReportBindingErrors { get; set; }
+
+        public bool ApplyViewModelChangesImmediately { get; set; }
     }
 }

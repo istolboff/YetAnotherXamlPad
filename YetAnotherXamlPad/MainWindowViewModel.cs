@@ -33,17 +33,21 @@ namespace YetAnotherXamlPad
             _xamlCodeEditor.Text = editorState.XamlCode;
             _viewModelCodeEditor.Text = editorState.ViewModelCode;
             ReportBindingErrors = editorState.ReportBindingErrors;
+            ApplyViewModelChangesImmediately = editorState.ApplyViewModelChangesImmediately;
 
-            if (startupError == null)
-            {
-                RenderXaml(editorState.XamlCode);
-            }
-            else
-            {
-                ReportError(startupError, ErrorSource.ViewModel);
-            }
+            _editorsChangeSubscription = ScribeToEditorsChanges();
 
-            _editorsChangeSubscription = ResubscribeToEditorsChanges();
+            Dispatcher.CurrentDispatcher.Post(() =>
+            {
+                if (startupError == null)
+                {
+                    RenderXaml(editorState.XamlCode);
+                }
+                else
+                {
+                    ReportViewModelError(startupError);
+                }
+            });
         }
 
         public string Title => AppDomain.CurrentDomain.FriendlyName;
@@ -79,6 +83,21 @@ namespace YetAnotherXamlPad
             }
         }
 
+        public bool ApplyViewModelChangesImmediately
+        {
+            get => _applyViewModelChangesImmediately;
+            set
+            {
+                if (_applyViewModelChangesImmediately == value)
+                {
+                    return;
+                }
+
+                _applyViewModelChangesImmediately = value;
+                PropertyChanged(this, new PropertyChangedEventArgs(nameof(ApplyViewModelChangesImmediately)));
+            }
+        }
+
         public bool ReportBindingErrors
         {
             get => _reportBindingErrors;
@@ -90,7 +109,15 @@ namespace YetAnotherXamlPad
                 }
 
                 _reportBindingErrors = value;
-                BindingErrorsReporting.Toggle(_reportBindingErrors);
+                if (value)
+                {
+                    BindingErrorsReporting.ErrorOccured += ReportXamlError;
+                }
+                else
+                {
+                    BindingErrorsReporting.ErrorOccured -= ReportXamlError;
+                }
+
                 PropertyChanged(this, new PropertyChangedEventArgs(nameof(ReportBindingErrors)));
                 RenderXaml(_xamlCodeEditor.Text);
             }
@@ -104,6 +131,7 @@ namespace YetAnotherXamlPad
             _xamlCodeEditor.Text = editorState.XamlCode;
             _viewModelCodeEditor.Text = editorState.ViewModelCode;
             _reportBindingErrors = editorState.ReportBindingErrors;
+            _applyViewModelChangesImmediately = editorState.ApplyViewModelChangesImmediately;
             PropertyChanged(this, new PropertyChangedEventArgs(null));
         }
 
@@ -120,10 +148,11 @@ namespace YetAnotherXamlPad
                 UseViewModel = _useViewModels,
                 XamlCode = _xamlCodeEditor.Text,
                 ViewModelCode = _viewModelCodeEditor.Text,
-                ReportBindingErrors = _reportBindingErrors
+                ReportBindingErrors = _reportBindingErrors,
+                ApplyViewModelChangesImmediately = _applyViewModelChangesImmediately
             };
 
-        private IDisposable ResubscribeToEditorsChanges()
+        private IDisposable ScribeToEditorsChanges()
         {
             var xamlCodeChanges = _xamlCodeEditor.CreateTextChangeObservable();
 
@@ -136,14 +165,27 @@ namespace YetAnotherXamlPad
                     .Subscribe(xamlCode => dispatcher.Post(() => RenderXaml(xamlCode)));
             }
 
-            var viewModelCodeChanges = _viewModelCodeEditor.CreateTextChangeObservable();
+            var viewModelCodeChanges = _viewModelCodeEditor
+                .CreateTextChangeObservable()
+                .Where(_ => ApplyViewModelChangesImmediately);
 
             var rawXamlChanges = xamlCodeChanges
                 .Throttle(XamlChangeThrottlingInterval)
                 .Select(xamlCode => new XamlCode(xamlCode));
 
+            var viewModelChangesBecameImmediatelyApplicable =
+                Observable.FromEventPattern<PropertyChangedEventHandler, PropertyChangedEventArgs>(
+                    h => PropertyChanged += h,
+                    h => PropertyChanged -= h)
+                    .Where(e => e.EventArgs.PropertyName == nameof(ApplyViewModelChangesImmediately) &&
+                                ApplyViewModelChangesImmediately);
+
             var rawViewModelChanges = viewModelCodeChanges
                 .Throttle(CsharpChangeThrottlingInterval)
+                .Merge(
+                    viewModelChangesBecameImmediatelyApplicable
+                        .Select(_ => _viewModelCodeEditor.Text)
+                        .Throttle(TimeSpan.FromMilliseconds(50)))
                 .Select(TryParseViewModelCode);
 
             var codeChangesListener = new CodeChangesListener(
@@ -169,7 +211,7 @@ namespace YetAnotherXamlPad
 
                 Errors.ClearErrors(); 
             })
-            .Catch(exception => ReportError(exception, ErrorSource.Xaml));
+            .Catch(ReportXamlError);
         }
 
         private void RequestGuiSessionRestart(ViewModelAssemblyBuilder assemblyBuilder = null)
@@ -177,22 +219,15 @@ namespace YetAnotherXamlPad
             GuiRunner.RequestGuiSessionRestart(CurrentState, assemblyBuilder);
         }
 
-        private void ReportError(Exception exception, ErrorSource errorSource)
+        private void ReportXamlError(Exception exception)
         {
-            switch (errorSource)
-            {
-                case ErrorSource.Xaml:
-                    Errors.ReportXamlError(exception);
-                    break;
+            Errors.ReportXamlError(exception);
+            ParsedXaml = null;
+        }
 
-                case ErrorSource.ViewModel:
-                    Errors.ReportViewModelErrors(exception);
-                    break;
-
-                default:
-                    throw new ArgumentException("errorSource");
-            }
-
+        private void ReportViewModelError(Exception exception)
+        {
+            Errors.ReportViewModelErrors(exception);
             ParsedXaml = null;
         }
 
@@ -201,6 +236,7 @@ namespace YetAnotherXamlPad
         private readonly IDisposable _editorsChangeSubscription;
 
         private bool _useViewModels;
+        private bool _applyViewModelChangesImmediately;
         private bool _reportBindingErrors;
         private FrameworkElement _parsedXaml;
 
@@ -275,7 +311,7 @@ namespace YetAnotherXamlPad
                     {
                         _dispatcher.Post(() =>
                             assemblyBuilderOrException.Value.Fold(
-                                exception => _target.ReportError(exception, ErrorSource.ViewModel),
+                                exception => _target.ReportViewModelError(exception),
                                 _target.RequestGuiSessionRestart));
                     }
                 }
@@ -283,28 +319,20 @@ namespace YetAnotherXamlPad
 
             private void BuildAndUseNewAssembly(Either<Exception, ViewModelAssemblyBuilder> assemblyBuilderOrException)
             {
-                assemblyBuilderOrException.Fold(
-                    exception => ReportError(exception, ErrorSource.ViewModel),
-                    assemblyBuilder =>
-                    {
-                        assemblyBuilder.Build().Fold(
-                            exception => ReportError(exception, ErrorSource.ViewModel),
-                            assemblyData =>
+                assemblyBuilderOrException
+                    .FlatMap(assemblyBuilder => assemblyBuilder.Build())
+                    .Fold(
+                        exception => _dispatcher.Post(() => _target.ReportViewModelError(exception)),
+                        assemblyData =>
                             {
                                 GuiRunner.SetViewModelAssembly(assemblyData);
                                 RenderXaml();
                             });
-                    });
             }
 
             private void RenderXaml()
             {
                 _dispatcher.Post(() => _target.RenderXaml(_xamlCode.Text));
-            }
-
-            private void ReportError(Exception exception, ErrorSource errorSource)
-            {
-                _dispatcher.Post(() => _target.ReportError(exception, errorSource));
             }
 
             private static bool CanViewModelAssemblyBeLoadedInCurrentAppDomain(
@@ -321,7 +349,5 @@ namespace YetAnotherXamlPad
             private XamlCode _xamlCode;
             private ParsedViewModelCode? _viewModelCode;
         }
-
-        private enum ErrorSource { Xaml, ViewModel }
     }
 }

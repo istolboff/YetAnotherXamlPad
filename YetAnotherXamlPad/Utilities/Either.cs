@@ -66,6 +66,11 @@ namespace YetAnotherXamlPad.Utilities
             Func<TRight, Either<TLeft, TResult>> getFromRight) => 
             @this?.Fold(Left<TLeft, TResult>, getFromRight);
 
+        public static Either<TLeft, TResult> FlatMap<TLeft, TRight, TResult>(
+            this Either<TLeft, TRight> @this,
+            Func<TRight, Either<TLeft, TResult>> getFromRight) =>
+            @this.Fold(Left<TLeft, TResult>, getFromRight);
+
         public static TRight GetOrElse<TLeft, TRight>(this Either<TLeft, TRight> @this, TRight or = default) =>
             @this.Fold(_ => or, right => right);
     }
