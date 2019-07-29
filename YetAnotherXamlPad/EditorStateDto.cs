@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Windows;
+using YetAnotherXamlPad.EditorState;
 
 namespace YetAnotherXamlPad
 {
     [Serializable]
-    public struct EditorStateDto
+    internal struct EditorStateDto
     {
         public bool UseViewModel { get; set; }
 
@@ -14,5 +16,9 @@ namespace YetAnotherXamlPad
         public bool ReportBindingErrors { get; set; }
 
         public bool ApplyViewModelChangesImmediately { get; set; }
+
+        public WindowState WindowState { get; set; }
+
+        public WindowPosition? MainWindowPosition { get; set; }
     }
 }

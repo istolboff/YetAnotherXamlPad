@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Threading;
 using System.Xml;
 using JetBrains.Annotations;
+using YetAnotherXamlPad.EditorState;
 using YetAnotherXamlPad.Utilities;
 using static System.Windows.Markup.XamlReader;
 using static YetAnotherXamlPad.Utilities.Do;
@@ -125,6 +126,12 @@ namespace YetAnotherXamlPad
 
         public ErrorsViewModel Errors { get; }
 
+        public WindowState WindowState { get; set; }
+        public double WindowLeft { get; set; }
+        public double WindowTop { get; set; }
+        public double WindowWidth { get; set; }
+        public double WindowHeight { get; set; }
+
         public void Reload(EditorStateDto editorState)
         {
             _useViewModels = editorState.UseViewModel;
@@ -149,7 +156,12 @@ namespace YetAnotherXamlPad
                 XamlCode = _xamlCodeEditor.Text,
                 ViewModelCode = _viewModelCodeEditor.Text,
                 ReportBindingErrors = _reportBindingErrors,
-                ApplyViewModelChangesImmediately = _applyViewModelChangesImmediately
+                ApplyViewModelChangesImmediately = _applyViewModelChangesImmediately,
+                MainWindowPosition = new WindowPosition
+                                        {
+                                            Location = new Rect(WindowLeft, WindowTop, WindowWidth, WindowHeight),
+                                            WindowState = WindowState
+                                        }
             };
 
         private IDisposable ScribeToEditorsChanges()

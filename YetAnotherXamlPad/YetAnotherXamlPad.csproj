@@ -86,6 +86,7 @@
     <Compile Include="BindingErrorsReporting.cs" />
     <Compile Include="EditorStateDto.cs" />
     <Compile Include="CodeEditor.cs" />
+    <Compile Include="EditorState\WindowPosition.cs" />
     <Compile Include="WpfBindingException.cs" />
     <Compile Include="WpfConverter.cs" />
     <Compile Include="ErrorsViewModel.cs" />
@@ -97,7 +98,6 @@
     <Compile Include="Utilities\Do.cs" />
     <Compile Include="Utilities\Either.cs" />
     <Compile Include="Utilities\Make.cs" />
-    <Compile Include="Utilities\Unit.cs" />
     <Compile Include="ViewModelAssemblyBuilder.cs" />
     <Compile Include="DefaultDomain.cs" />
     <Compile Include="GuiRunner.cs" />

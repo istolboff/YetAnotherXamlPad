@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
+using YetAnotherXamlPad.EditorState;
 using YetAnotherXamlPad.Utilities;
 using static YetAnotherXamlPad.Utilities.Do;
 using static YetAnotherXamlPad.Utilities.Either;
@@ -59,22 +60,27 @@ namespace YetAnotherXamlPad
             guiRunnerState.StartupError = null;
 
             var defaultDomain = GetDefaultDomain();
+            var defaultDomainMainWindow = defaultDomain.Application.MainWindow;
             if (guiRunnerState.EditorState.UseViewModel)
             {
-                defaultDomain.Application.MainWindow?.Hide();
+                defaultDomainMainWindow?.Hide();
                 RunDevotedAppDomain(defaultDomain, guiRunnerState);
             }
             else
             {
                 defaultDomain.RunApplicationIfNotAlreadyRunning();
-                if (defaultDomain.Application.MainWindow != null)
+                if (defaultDomainMainWindow == null)
                 {
-                    Debug.Assert(
-                        (defaultDomain.Application.MainWindow.DataContext as MainWindowViewModel) != null,
-                        "Program logic exception: By this time MainWindow of the drfault appdomain should have DomainContext set up.");
-                    ((MainWindowViewModel)defaultDomain.Application.MainWindow.DataContext).Reload(guiRunnerState.EditorState);
-                    defaultDomain.Application.MainWindow.Show();
+                    return;
                 }
+
+                Debug.Assert(
+                        (defaultDomainMainWindow.DataContext as MainWindowViewModel) != null,
+                        "Program logic exception: By this time MainWindow of the default appdomain should have DomainContext set up.");
+
+                ((MainWindowViewModel)defaultDomainMainWindow.DataContext).Reload(guiRunnerState.EditorState);
+                guiRunnerState.EditorState.MainWindowPosition?.ApplyTo(defaultDomainMainWindow);
+                defaultDomainMainWindow.Show();
             }
         }
 

@@ -7,7 +7,12 @@
         xmlns:local="clr-namespace:YetAnotherXamlPad"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=local:MainWindowViewModel, IsDesignTimeCreatable=False}"
-        Title="{Binding Title}">
+        Title="{Binding Title}"
+        WindowState="{Binding WindowState, Mode=OneWayToSource}"
+        Left="{Binding WindowLeft, Mode=OneWayToSource}"
+        Top="{Binding WindowTop, Mode=OneWayToSource}"
+        Width="{Binding WindowWidth, Mode=OneWayToSource}"
+        Height="{Binding WindowHeight, Mode=OneWayToSource}">
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="*" />

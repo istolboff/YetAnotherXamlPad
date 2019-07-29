@@ -10,6 +10,9 @@ namespace YetAnotherXamlPad
         {
             InitializeComponent();
 
+            WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen;
+            GuiRunner.StartupInfo.EditorState.MainWindowPosition?.ApplyTo(this);
+
             Loaded += (_, __) => DataContext = new MainWindowViewModel(
                                                     xamlCodeEditor: new CodeEditor(XamlEditor),
                                                     viewModelCodeEditor: new CodeEditor(ViewModelEditor));

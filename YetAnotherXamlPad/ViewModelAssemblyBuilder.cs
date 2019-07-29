@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using JetBrains.Annotations;
 using YetAnotherXamlPad.Utilities;
 using static YetAnotherXamlPad.Utilities.Either;
+using System.Windows;
 
 namespace YetAnotherXamlPad
 {
@@ -25,7 +26,7 @@ namespace YetAnotherXamlPad
             var compilation = CSharpCompilation.Create(
                 AssemblyName,
                 syntaxTrees: new[] { _syntaxTree },
-                references: new[] { MscorLib },
+                references: ListReferences(),
                 options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
             using (var memoryStream = new MemoryStream())
             {
@@ -58,6 +59,11 @@ namespace YetAnotherXamlPad
             }
         }
 
+        private MetadataReference[] ListReferences()
+        {
+            return new[] { MscorLib, SystemLib, PresentationFrameworkLib };
+        }
+
         private static Either<Exception, string>? TryGetViewModelAssemblyName(
             XamlCode xamlCode, 
             ParsedViewModelCode viewModelCode)
@@ -88,6 +94,9 @@ namespace YetAnotherXamlPad
         private readonly SyntaxTree _syntaxTree;
 
         private static readonly MetadataReference MscorLib = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
+        private static readonly MetadataReference SystemLib = MetadataReference.CreateFromFile(typeof(Uri).Assembly.Location);
+        private static readonly MetadataReference PresentationFrameworkLib = MetadataReference.CreateFromFile(typeof(Window).Assembly.Location);
+
         private const string WarmUpCsharpCode =
 @"namespace ViewModels
 {
