@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Reactive.Linq;
 using JetBrains.Annotations;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Document;
 using YetAnotherXamlPad.TextMarking;
-using System.Reactive.Linq;
 
 namespace YetAnotherXamlPad
 {
